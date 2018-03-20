@@ -1,0 +1,10 @@
+[Unit]
+Description=Rtsp Restream Server
+
+[Service]
+ExecStart=%h/bin/RestreamServerApp
+Restart=always
+Environment="GST_DEBUG=*:3"
+
+[Install]
+WantedBy=default.target
