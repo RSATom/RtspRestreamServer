@@ -19,6 +19,7 @@ private:
     static inline const std::shared_ptr<spdlog::logger>& Log();
 
     void initStaticServer();
+    void initRestreamServer();
 
 private:
     struct Private;
