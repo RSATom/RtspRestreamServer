@@ -17,6 +17,14 @@ struct Server::Private
 
     GstRTSPServerPtr restreamServer;
     GstRTSPMountPointsPtr mountPoints;
+
+    void onClientConnected(GstRTSPClient*);
+
+    void onPlay(const GstRTSPClient*, const GstRTSPUrl*, const gchar* sessionId);
+    void onRecord(const GstRTSPClient*, const GstRTSPUrl*, const gchar* sessionId);
+    void onTeardown(const GstRTSPClient*, const GstRTSPUrl*, const gchar* sessionId);
+
+    void onClientClosed(const GstRTSPClient*);
 };
 
 
@@ -24,6 +32,95 @@ const std::shared_ptr<spdlog::logger>& Server::Log()
 {
     return RestreamServer::Log();
 }
+
+void Server::Private::onClientConnected(GstRTSPClient* client)
+{
+    GstRTSPConnection* connection =
+        gst_rtsp_client_get_connection(client);
+    Log()->info(
+        "New connection from {}",
+        gst_rtsp_connection_get_ip(connection));
+
+    auto playCallback = (void (*)(GstRTSPClient*, GstRTSPContext*, gpointer))
+        [] (GstRTSPClient* client, GstRTSPContext* context, gpointer userData) {
+            Private* p =
+                static_cast<Private*>(userData);
+            const gchar* sessionId =
+                gst_rtsp_session_get_sessionid(context->session);
+            p->onPlay(client, context->uri, sessionId);
+        };
+    g_signal_connect(client, "play-request", GCallback(playCallback), this);
+
+    auto recordCallback = (void (*)(GstRTSPClient*, GstRTSPContext*, gpointer))
+        [] (GstRTSPClient* client, GstRTSPContext* context, gpointer userData) {
+            Private* p =
+                static_cast<Private*>(userData);
+            const gchar* sessionId =
+                gst_rtsp_session_get_sessionid(context->session);
+            p->onRecord(client, context->uri, sessionId);
+        };
+    g_signal_connect(client, "record-request", GCallback(recordCallback), this);
+
+    auto teardownCallback = (void (*)(GstRTSPClient*, GstRTSPContext*, gpointer))
+        [] (GstRTSPClient* client, GstRTSPContext* context, gpointer userData) {
+            Private* p =
+                static_cast<Private*>(userData);
+            const gchar* sessionId =
+                gst_rtsp_session_get_sessionid(context->session);
+            p->onTeardown(client, context->uri, sessionId);
+        };
+    g_signal_connect(client, "teardown-request", GCallback(teardownCallback), this);
+
+    auto closedCallback= (void (*)(GstRTSPClient*, gpointer))
+        [] (GstRTSPClient* client, gpointer userData) {
+            Private* p =
+                static_cast<Private*>(userData);
+            p->onClientClosed(client);
+        };
+    g_signal_connect(client, "closed", GCallback(closedCallback), this);
+}
+
+void Server::Private::onPlay(
+    const GstRTSPClient* client,
+    const GstRTSPUrl* url,
+    const gchar* sessionId)
+{
+    Log()->debug(
+        "Server.play."
+        " client: {}, path: {}, sessionId: {}",
+        static_cast<const void*>(client), url->abspath, sessionId);
+}
+
+void Server::Private::onRecord(
+    const GstRTSPClient* client,
+    const GstRTSPUrl* url,
+    const gchar* sessionId)
+{
+    Log()->debug(
+        "Server.record. "
+        "client: {}, path: {}, sessionId: {}",
+        static_cast<const void*>(client), url->abspath, sessionId);
+}
+
+void Server::Private::onTeardown(
+    const GstRTSPClient* client,
+    const GstRTSPUrl* url,
+    const gchar* sessionId)
+{
+    Log()->debug(
+        "Server.teardown. "
+        "client: {}, path: {}, sessionId: {}",
+        static_cast<const void*>(client), url->abspath, sessionId);
+}
+
+void Server::Private::onClientClosed(const GstRTSPClient* client)
+{
+    Log()->debug(
+        "Server.clientClosed. "
+        "client: {}",
+        static_cast<const void*>(client));
+}
+
 
 Server::Server() :
     _p(new Private())
@@ -123,6 +220,20 @@ void Server::initRestreamServer()
     gst_rtsp_server_set_service(server, RESTREAM_SERVER_PORT_STR);
 
     gst_rtsp_server_set_mount_points(server, mountPoints);
+
+    auto clientConnectedCallback =
+        (void (*)(GstRTSPServer*, GstRTSPClient*, gpointer))
+        [] (GstRTSPServer* /*server*/,
+            GstRTSPClient* client,
+            gpointer userData)
+        {
+            Private* p =
+                static_cast<Private*>(userData);
+            p->onClientConnected(client);
+        };
+    g_signal_connect(
+        server, "client-connected",
+        (GCallback) clientConnectedCallback, _p.get());
 }
 
 void Server::serverMain()
