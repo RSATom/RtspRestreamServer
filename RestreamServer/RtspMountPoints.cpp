@@ -138,6 +138,18 @@ static gchar* make_path(GstRTSPMountPoints* mountPoints, const GstRTSPUrl* url)
         return nullptr;
     }
 
+    if(MAX_CLIENTS_PER_PATH > 0 &&
+       pathRefsIt != p.pathsRefs.end() &&
+       pathRefsIt->second >= MAX_CLIENTS_PER_PATH)
+    {
+        Log()->info(
+            "Max clients count per path reached. client: {}, path: {}, count {}",
+            static_cast<const void*>(context->client), path, MAX_PATHS_COUNT);
+
+        return nullptr;
+    }
+
+
     bool addPathRef = false;
     auto clientPathsIt = p.clientsToPaths.find(context->client);
     if(clientPathsIt == p.clientsToPaths.end()) {
