@@ -126,6 +126,18 @@ static gchar* make_path(GstRTSPMountPoints* mountPoints, const GstRTSPUrl* url)
 
     CxxPrivate& p = *self->p;
 
+    auto pathRefsIt = p.pathsRefs.find(path);
+    if(MAX_PATHS_COUNT > 0 &&
+       pathRefsIt == p.pathsRefs.end() &&
+       p.pathsRefs.size() >= MAX_PATHS_COUNT)
+    {
+        Log()->info(
+            "Max paths count reached. client: {}, path: {}, count {}",
+            static_cast<const void*>(context->client), path, MAX_PATHS_COUNT);
+
+        return nullptr;
+    }
+
     bool addPathRef = false;
     auto clientPathsIt = p.clientsToPaths.find(context->client);
     if(clientPathsIt == p.clientsToPaths.end()) {
@@ -143,7 +155,6 @@ static gchar* make_path(GstRTSPMountPoints* mountPoints, const GstRTSPUrl* url)
         addPathRef = clientPathsIt->second.insert(path).second;
     }
 
-    auto pathRefsIt = p.pathsRefs.find(path);
     if(p.pathsRefs.end() == pathRefsIt) {
         Log()->debug(
             "Creating mount point. client: {}, path: {}",
