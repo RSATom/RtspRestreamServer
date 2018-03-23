@@ -2,10 +2,12 @@
 
 #include <cassert>
 
+#include <set>
 #include <map>
 
 #include "Config.h"
 #include "Common/GstRtspServerPtr.h"
+#include "Log.h"
 #include "RtspMediaFactory.h"
 #include "StaticSources.h"
 
@@ -18,7 +20,8 @@ namespace
 
 struct CxxPrivate
 {
-    std::map<std::string, GstRTSPMediaFactory*> factories;
+    std::map<std::string, uint32_t> pathsRefs;
+    std::map<GstRTSPClient*, std::set<std::string> > clientsToPaths;
 };
 
 }
@@ -66,6 +69,44 @@ static void rtsp_mount_points_init(RtspMountPoints* self)
     self->p = new CxxPrivate;
 }
 
+void client_closed(GstRTSPClient* client, gpointer userData)
+{
+    RtspMountPoints* self = _RTSP_MOUNT_POINTS(userData);
+
+    CxxPrivate& p = *self->p;
+
+    auto clientPathsIt = p.clientsToPaths.find(client);
+    if(clientPathsIt == p.clientsToPaths.end()) {
+        Log()->debug(
+            "Client didn't use any path. client: {}",
+            static_cast<const void*>(client));
+        return;
+    } else {
+        for(const std::string& path: clientPathsIt->second) {
+            auto pathRefsIt = p.pathsRefs.find(path);
+            if(pathRefsIt == p.pathsRefs.end())
+                Log()->critical("Inconsistent data in mount points reference counting");
+            else {
+                --pathRefsIt->second;
+                if(0 == pathRefsIt->second) {
+                    Log()->debug(
+                        "Removing unused mount point. last client: {}, path: {}",
+                        static_cast<const void*>(client), path);
+                    gst_rtsp_mount_points_remove_factory(
+                        GST_RTSP_MOUNT_POINTS(self),
+                        path.data());
+                    p.pathsRefs.erase(pathRefsIt);
+                } else {
+                    Log()->debug(
+                        "Path ref count decreased. client: {}, path: {}, refs: {}",
+                        static_cast<const void*>(client), path, pathRefsIt->second);
+                }
+            }
+        }
+        p.clientsToPaths.erase(clientPathsIt);
+    }
+}
+
 static gchar* make_path(GstRTSPMountPoints* mountPoints, const GstRTSPUrl* url)
 {
     RtspMountPoints* self = _RTSP_MOUNT_POINTS(mountPoints);
@@ -75,18 +116,51 @@ static gchar* make_path(GstRTSPMountPoints* mountPoints, const GstRTSPUrl* url)
     if(!context)
         return nullptr;
 
+    const std::string path = url->abspath;
+
+    Log()->debug("make_path. client: {}, path: {}",
+        static_cast<const void*>(context->client), path);
+
     static const URL splashSource =
         "rtsp://localhost:" STATIC_SERVER_PORT_STR BLUE;
 
     CxxPrivate& p = *self->p;
 
-    auto factoryIt = p.factories.find(url->abspath);
-    if(p.factories.end() == factoryIt) {
+    bool addPathRef = false;
+    auto clientPathsIt = p.clientsToPaths.find(context->client);
+    if(clientPathsIt == p.clientsToPaths.end()) {
+        Log()->debug(
+            "Path request from new client. client: {}, path: {}",
+            static_cast<const void*>(context->client), path);
+
+        g_signal_connect(context->client, "closed", GCallback(client_closed), mountPoints);
+        p.clientsToPaths.emplace(context->client, std::set<std::string>{path});
+        addPathRef = true;
+    } else {
+        Log()->debug(
+            "Client requesting path. client: {}, path: {}",
+            static_cast<const void*>(context->client), path);
+        addPathRef = clientPathsIt->second.insert(path).second;
+    }
+
+    auto pathRefsIt = p.pathsRefs.find(path);
+    if(p.pathsRefs.end() == pathRefsIt) {
+        Log()->debug(
+            "Creating mount point. client: {}, path: {}",
+            static_cast<const void*>(context->client), path);
+
+        assert(addPathRef);
+
         GstRTSPMediaFactory* factory =
             GST_RTSP_MEDIA_FACTORY(rtsp_media_factory_new(splashSource));
         gst_rtsp_mount_points_add_factory(mountPoints, url->abspath, factory);
 
-        p.factories.emplace(url->abspath, factory);
+        p.pathsRefs.emplace(path, 1);
+    } else {
+        ++(pathRefsIt->second);
+        Log()->debug(
+            "Path ref count increased. client: {}, path: {}, refs: {}",
+            static_cast<const void*>(context->client), path, pathRefsIt->second);
     }
 
     return g_strdup(url->abspath);
