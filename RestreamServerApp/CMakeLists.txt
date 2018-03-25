@@ -7,6 +7,7 @@ find_package(PkgConfig REQUIRED)
 file(GLOB SOURCES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
     [^.]*.cpp
     [^.]*.h
+    [^.]*.service
     )
 
 add_executable(${PROJECT_NAME} ${SOURCES})
