@@ -45,7 +45,9 @@ struct Server::Private
 
     void onClientConnected(GstRTSPClient*);
 
+    GstRTSPStatusCode beforePlay(const GstRTSPClient*, const GstRTSPUrl*, const gchar* sessionId);
     void onPlay(const GstRTSPClient*, const GstRTSPUrl*, const gchar* sessionId);
+    GstRTSPStatusCode beforeRecord(const GstRTSPClient*, const GstRTSPUrl*, const gchar* sessionId);
     void onRecord(const GstRTSPClient*, const GstRTSPUrl*, const gchar* sessionId);
     void onTeardown(const GstRTSPClient*, const GstRTSPUrl*, const gchar* sessionId);
 
@@ -99,6 +101,17 @@ void Server::Private::onClientConnected(GstRTSPClient* client)
         "New connection from {}",
         gst_rtsp_connection_get_ip(connection));
 
+    auto prePlayCallback =
+        (GstRTSPStatusCode (*)(GstRTSPClient*, GstRTSPContext*, gpointer))
+        [] (GstRTSPClient* client, GstRTSPContext* context, gpointer userData) {
+            Private* p =
+                static_cast<Private*>(userData);
+            const gchar* sessionId =
+                gst_rtsp_session_get_sessionid(context->session);
+            return p->beforePlay(client, context->uri, sessionId);
+        };
+    g_signal_connect(client, "pre-play-request", GCallback(prePlayCallback), this);
+
     auto playCallback = (void (*)(GstRTSPClient*, GstRTSPContext*, gpointer))
         [] (GstRTSPClient* client, GstRTSPContext* context, gpointer userData) {
             Private* p =
@@ -108,6 +121,17 @@ void Server::Private::onClientConnected(GstRTSPClient* client)
             p->onPlay(client, context->uri, sessionId);
         };
     g_signal_connect(client, "play-request", GCallback(playCallback), this);
+
+    auto preRecordCallback =
+        (GstRTSPStatusCode (*)(GstRTSPClient*, GstRTSPContext*, gpointer))
+        [] (GstRTSPClient* client, GstRTSPContext* context, gpointer userData) {
+            Private* p =
+                static_cast<Private*>(userData);
+            const gchar* sessionId =
+                gst_rtsp_session_get_sessionid(context->session);
+            return p->beforeRecord(client, context->uri, sessionId);
+        };
+    g_signal_connect(client, "pre-record-request", GCallback(preRecordCallback), this);
 
     auto recordCallback = (void (*)(GstRTSPClient*, GstRTSPContext*, gpointer))
         [] (GstRTSPClient* client, GstRTSPContext* context, gpointer userData) {
@@ -138,6 +162,32 @@ void Server::Private::onClientConnected(GstRTSPClient* client)
     g_signal_connect(client, "closed", GCallback(closedCallback), this);
 }
 
+GstRTSPStatusCode Server::Private::beforePlay(
+    const GstRTSPClient* client,
+    const GstRTSPUrl* url,
+    const gchar* sessionId)
+{
+    Log()->debug(
+        "Server.beforePlay."
+        " client: {}, path: {}, sessionId: {}",
+        static_cast<const void*>(client), url->abspath, sessionId);
+
+    const std::string path = url->abspath;
+
+    auto pathIt = paths.find(path);
+    if(MAX_CLIENTS_PER_PATH > 0 && paths.end() != pathIt) {
+        if(pathIt->second.playCount >= (MAX_CLIENTS_PER_PATH - 1)) {
+            Log()->error(
+                "Max players count limit reached. "
+                "client: {}, path: {}, sessionId: {}",
+                static_cast<const void*>(client), url->abspath, sessionId);
+            return GST_RTSP_STS_FORBIDDEN;
+        }
+    }
+
+    return GST_RTSP_STS_OK;
+}
+
 void Server::Private::onPlay(
     const GstRTSPClient* client,
     const GstRTSPUrl* url,
@@ -154,6 +204,19 @@ void Server::Private::onPlay(
     ++pathInfo.playCount;
     if(1 == pathInfo.playCount)
         firstPlayerConnected(pathInfo);
+}
+
+GstRTSPStatusCode Server::Private::beforeRecord(
+    const GstRTSPClient* client,
+    const GstRTSPUrl* url,
+    const gchar* sessionId)
+{
+    Log()->debug(
+        "Server.beforeRecord."
+        " client: {}, path: {}, sessionId: {}",
+        static_cast<const void*>(client), url->abspath, sessionId);
+
+    return GST_RTSP_STS_OK;
 }
 
 void Server::Private::onRecord(
