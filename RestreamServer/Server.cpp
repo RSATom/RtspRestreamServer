@@ -1,5 +1,7 @@
 #include "Server.h"
 
+#include <set>
+
 #include "Common/Types.h"
 #include "Common/GstRtspServerPtr.h"
 
@@ -11,12 +13,35 @@
 namespace RestreamServer
 {
 
+namespace
+{
+
+struct ClientInfo
+{
+    std::set<std::string> refPaths;
+};
+
+struct PathInfo
+{
+    std::set<const GstRTSPClient*> refClients;
+    unsigned playCount;
+    const GstRTSPClient* recordClient;
+    std::string recordSessionId;
+};
+
+}
+
 struct Server::Private
 {
     GstRTSPServerPtr staticServer;
 
     GstRTSPServerPtr restreamServer;
     GstRTSPMountPointsPtr mountPoints;
+
+    std::map<const GstRTSPClient*, ClientInfo> clients;
+    std::map<std::string, PathInfo> paths;
+
+    PathInfo& registerPath(const GstRTSPClient*, const std::string& path);
 
     void onClientConnected(GstRTSPClient*);
 
@@ -25,12 +50,45 @@ struct Server::Private
     void onTeardown(const GstRTSPClient*, const GstRTSPUrl*, const gchar* sessionId);
 
     void onClientClosed(const GstRTSPClient*);
+
+    void firstPlayerConnected(const PathInfo&) {}
+    void lastPlayerDisconnected(const PathInfo&) {}
+
+    void recorderConnected(const PathInfo&) {}
+    void recorderDisconnected(const PathInfo&) {}
 };
 
 
 const std::shared_ptr<spdlog::logger>& Server::Log()
 {
     return RestreamServer::Log();
+}
+
+PathInfo& Server::Private::registerPath(const GstRTSPClient* client, const std::string& path)
+{
+    const auto clientIt = clients.find(client);
+    if(clients.end() == clientIt) {
+        clients.emplace(client, ClientInfo{.refPaths = {path}});
+    } else {
+        auto& refPaths = clientIt->second.refPaths;
+        refPaths.emplace(path);
+    }
+
+    auto pathIt = paths.find(path);
+    if(paths.end() == pathIt) {
+        pathIt =
+            paths.emplace(
+                path,
+                PathInfo {
+                .refClients = {client},
+                .playCount = 0,
+                .recordClient = nullptr}).first;
+    } else {
+        auto& refClients = pathIt->second.refClients;
+        refClients.emplace(client);
+    }
+
+    return pathIt->second;
 }
 
 void Server::Private::onClientConnected(GstRTSPClient* client)
@@ -89,6 +147,13 @@ void Server::Private::onPlay(
         "Server.play."
         " client: {}, path: {}, sessionId: {}",
         static_cast<const void*>(client), url->abspath, sessionId);
+
+    const std::string path = url->abspath;
+
+    PathInfo& pathInfo = registerPath(client, path);
+    ++pathInfo.playCount;
+    if(1 == pathInfo.playCount)
+        firstPlayerConnected(pathInfo);
 }
 
 void Server::Private::onRecord(
@@ -100,6 +165,20 @@ void Server::Private::onRecord(
         "Server.record. "
         "client: {}, path: {}, sessionId: {}",
         static_cast<const void*>(client), url->abspath, sessionId);
+
+    const std::string path = url->abspath;
+
+    PathInfo& pathInfo = registerPath(client, path);
+    if(pathInfo.recordClient || !pathInfo.recordSessionId.empty()) {
+        Log()->critical(
+            "Second record on the same path. client: {}, path: {}",
+            static_cast<const void*>(client), url->abspath);
+    } else {
+        pathInfo.recordClient = client;
+        pathInfo.recordSessionId = sessionId;
+
+        recorderConnected(pathInfo);
+    }
 }
 
 void Server::Private::onTeardown(
@@ -111,6 +190,36 @@ void Server::Private::onTeardown(
         "Server.teardown. "
         "client: {}, path: {}, sessionId: {}",
         static_cast<const void*>(client), url->abspath, sessionId);
+
+    const std::string path = url->abspath;
+
+    auto pathIt = paths.find(path);
+    if(paths.end() == pathIt) {
+        Log()->critical(
+            "Not registered path teardown. client: {}, path: {}",
+            static_cast<const void*>(client), url->abspath);
+        return;
+    }
+
+    PathInfo& pathInfo = pathIt->second;
+    if(client == pathInfo.recordClient &&
+       sessionId == pathInfo.recordSessionId)
+    {
+        pathInfo.recordClient = nullptr;
+        pathInfo.recordSessionId.clear();
+
+        recorderDisconnected(pathInfo);
+    } else {
+        if(pathInfo.playCount > 0) {
+            --pathInfo.playCount;
+            if(0 == pathInfo.playCount)
+                lastPlayerDisconnected(pathInfo);
+        } else {
+            Log()->critical(
+                "Not registered reader teardown. client: {}, path: {}",
+                static_cast<const void*>(client), url->abspath);
+        }
+    }
 }
 
 void Server::Private::onClientClosed(const GstRTSPClient* client)
@@ -119,6 +228,52 @@ void Server::Private::onClientClosed(const GstRTSPClient* client)
         "Server.clientClosed. "
         "client: {}",
         static_cast<const void*>(client));
+
+    const auto clientIt = clients.find(client);
+    if(clients.end() != clientIt) {
+        auto& refPaths = clientIt->second.refPaths;
+        for(const std::string& path: refPaths) {
+            auto pathIt = paths.find(path);
+            if(paths.end() != pathIt) {
+                PathInfo& pathInfo = pathIt->second;
+
+                auto& refClients = pathIt->second.refClients;
+                refClients.erase(client);
+
+                if(refClients.empty()) {
+                    // last client was reader
+                    if(nullptr == pathInfo.recordClient)
+                        lastPlayerDisconnected(pathInfo);
+                    else {
+                        assert(pathInfo.recordClient == client);
+
+                        pathInfo.recordClient = nullptr;
+                        pathInfo.recordSessionId.clear();
+
+                        recorderDisconnected(pathInfo);
+                    }
+
+                    paths.erase(pathIt);
+                } else {
+                    if(client == pathInfo.recordClient) {
+                        pathInfo.recordClient = nullptr;
+                        pathInfo.recordSessionId.clear();
+
+                        recorderDisconnected(pathInfo);
+                    }
+
+                    if(++refClients.begin() == refClients.end()) {
+                        // if only writer remained
+                        if(nullptr != pathInfo.recordClient)
+                            lastPlayerDisconnected(pathInfo);
+                    }
+                }
+            } else {
+                Log()->critical("Inconsitency between clients and paths");
+            }
+        }
+        clients.erase(clientIt);
+    }
 }
 
 
