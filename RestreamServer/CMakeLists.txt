@@ -5,6 +5,7 @@ project(RestreamServer)
 find_package(Threads REQUIRED)
 
 find_package(PkgConfig REQUIRED)
+pkg_search_module(SPDLOG REQUIRED spdlog)
 pkg_search_module(GSTREAMER REQUIRED gstreamer-1.0)
 pkg_search_module(GSTREAMER_RTSP REQUIRED gstreamer-rtsp-1.0)
 pkg_search_module(GSTREAMER_RTSP_SERVER REQUIRED gstreamer-rtsp-server-1.0)
