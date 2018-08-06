@@ -6,9 +6,12 @@
 #include <map>
 
 #include "Config.h"
+
+#include "Common/GlibPtr.h"
 #include "Common/GstRtspServerPtr.h"
 #include "Log.h"
-#include "RtspMediaFactory.h"
+#include "RtspRecordMediaFactory.h"
+#include "RtspPlayMediaFactory.h"
 #include "StaticSources.h"
 
 
@@ -117,6 +120,7 @@ static gchar* make_path(GstRTSPMountPoints* mountPoints, const GstRTSPUrl* url)
         return nullptr;
 
     const std::string path = url->abspath;
+    const bool isRecord = (g_strcmp0(url->query, "record") == 0);
 
     Log()->debug("make_path. client: {}, path: {}",
         static_cast<const void*>(context->client), path);
@@ -149,7 +153,6 @@ static gchar* make_path(GstRTSPMountPoints* mountPoints, const GstRTSPUrl* url)
         return nullptr;
     }
 
-
     bool addPathRef = false;
     auto clientPathsIt = p.clientsToPaths.find(context->client);
     if(clientPathsIt == p.clientsToPaths.end()) {
@@ -174,9 +177,19 @@ static gchar* make_path(GstRTSPMountPoints* mountPoints, const GstRTSPUrl* url)
 
         assert(addPathRef);
 
-        GstRTSPMediaFactory* factory =
-            GST_RTSP_MEDIA_FACTORY(rtsp_media_factory_new(splashSource));
-        gst_rtsp_mount_points_add_factory(mountPoints, url->abspath, factory);
+        RtspPlayMediaFactory* playFactory =
+            rtsp_play_media_factory_new(splashSource);
+        RtspRecordMediaFactory* recordFactory =
+            rtsp_record_media_factory_new();
+
+        rtsp_play_media_factory_set_record_factory(playFactory, recordFactory);
+        rtsp_record_media_factory_set_play_factory(recordFactory, playFactory);
+
+        gst_rtsp_mount_points_add_factory(
+            mountPoints, url->abspath, GST_RTSP_MEDIA_FACTORY(playFactory));
+        GCharPtr recordUrl(g_strconcat(url->abspath, "?record", nullptr));
+        gst_rtsp_mount_points_add_factory(
+            mountPoints, recordUrl.get(), GST_RTSP_MEDIA_FACTORY(recordFactory));
 
         p.pathsRefs.emplace(path, 1);
     } else {
@@ -186,7 +199,10 @@ static gchar* make_path(GstRTSPMountPoints* mountPoints, const GstRTSPUrl* url)
             static_cast<const void*>(context->client), path, pathRefsIt->second);
     }
 
-    return g_strdup(url->abspath);
+    return
+        isRecord ?
+            g_strconcat(url->abspath, "?record", nullptr) :
+            g_strdup(url->abspath);
 }
 
 }
