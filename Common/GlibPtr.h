@@ -10,6 +10,9 @@ struct GlibUnref
     void operator() (GError* error)
         { g_error_free(error); }
 
+    void operator() (GObject* object)
+        { g_object_unref(object); }
+
     void operator() (GMainContext* context)
         { g_main_context_unref(context); }
 
@@ -30,6 +33,10 @@ typedef
     std::unique_ptr<
         GError,
         GlibUnref> GErrorPtr;
+typedef
+    std::unique_ptr<
+        GObject,
+        GlibUnref> GObjectPtr;
 typedef
     std::unique_ptr<
         GMainContext,
