@@ -57,3 +57,21 @@ typedef
     std::unique_ptr<
         gchar,
         GlibUnref> GCharPtr;
+
+
+struct GObjectWeakRef
+{
+    GObjectWeakRef(GObject* object = nullptr)
+        { g_weak_ref_init(&ref, object); }
+
+    ~GObjectWeakRef()
+        { g_weak_ref_clear(&ref); }
+
+    GObjectPtr get()
+        { return GObjectPtr(G_OBJECT(g_weak_ref_get(&ref))); }
+
+    void reset(GObject* object)
+        { g_weak_ref_set(&ref, object); }
+
+    GWeakRef ref;
+};
