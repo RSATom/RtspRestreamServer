@@ -41,6 +41,7 @@ struct Server::Private
     std::map<const GstRTSPClient*, ClientInfo> clients;
     std::map<std::string, PathInfo> paths;
 
+    bool isRecording(const GstRTSPClient* client, const std::string& path);
     PathInfo& registerPath(const GstRTSPClient*, const std::string& path);
 
     void onClientConnected(GstRTSPClient*);
@@ -64,6 +65,17 @@ struct Server::Private
 const std::shared_ptr<spdlog::logger>& Server::Log()
 {
     return RestreamServer::Log();
+}
+
+bool Server::Private::isRecording(const GstRTSPClient* client, const std::string& path)
+{
+    auto pathIt = paths.find(path);
+    if(paths.end() == pathIt)
+        return false;
+    else {
+        const PathInfo& pathInfo = pathIt->second;
+        return pathInfo.recordClient || !pathInfo.recordSessionId.empty();
+    }
 }
 
 PathInfo& Server::Private::registerPath(const GstRTSPClient* client, const std::string& path)
@@ -216,7 +228,13 @@ GstRTSPStatusCode Server::Private::beforeRecord(
         " client: {}, path: {}, sessionId: {}",
         static_cast<const void*>(client), url->abspath, sessionId);
 
-    return GST_RTSP_STS_OK;
+    if(isRecording(client, url->abspath)) {
+        Log()->info(
+            "Second record on the same path. client: {}, path: {}",
+            static_cast<const void*>(client), url->abspath);
+        return GST_RTSP_STS_SERVICE_UNAVAILABLE;
+    } else
+       return GST_RTSP_STS_OK;
 }
 
 void Server::Private::onRecord(
