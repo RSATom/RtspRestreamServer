@@ -361,8 +361,6 @@ void Server::Private::onClientClosed(const GstRTSPClient* client)
 Server::Server() :
     _p(new Private())
 {
-    gst_init(0, nullptr);
-
     initStaticServer();
     initRestreamServer();
 }

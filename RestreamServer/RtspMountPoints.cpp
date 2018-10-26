@@ -14,6 +14,7 @@
 #include "RtspPlayMediaFactory.h"
 #include "StaticSources.h"
 
+static const gchar* RecordSuffix = "?record";
 
 namespace RestreamServer
 {
@@ -33,17 +34,24 @@ struct _RtspMountPoints
 {
     GstRTSPMountPoints parent_instance;
 
+    uint64_t proxy;
+
     CxxPrivate* p;
 };
 
 
-G_DEFINE_TYPE(RtspMountPoints, rtsp_mount_points, GST_TYPE_RTSP_MOUNT_POINTS)
+G_DEFINE_TYPE(
+    RtspMountPoints,
+    rtsp_mount_points,
+    GST_TYPE_RTSP_MOUNT_POINTS)
 
 
-static gchar* make_path(GstRTSPMountPoints* mountPoints, const GstRTSPUrl* url);
+static gchar*
+make_path(GstRTSPMountPoints* mountPoints, const GstRTSPUrl* url);
 
 
-RtspMountPoints* rtsp_mount_points_new()
+RtspMountPoints*
+rtsp_mount_points_new()
 {
     RtspMountPoints* instance =
         _RTSP_MOUNT_POINTS(g_object_new(TYPE_RTSP_MOUNT_POINTS, NULL));
@@ -51,7 +59,8 @@ RtspMountPoints* rtsp_mount_points_new()
     return instance;
 }
 
-static void rtsp_mount_points_class_init(RtspMountPointsClass* klass)
+static void
+rtsp_mount_points_class_init(RtspMountPointsClass* klass)
 {
     GstRTSPMountPointsClass* gst_mount_points_klass =
         GST_RTSP_MOUNT_POINTS_CLASS(klass);
@@ -67,12 +76,15 @@ static void rtsp_mount_points_class_init(RtspMountPointsClass* klass)
         };
 }
 
-static void rtsp_mount_points_init(RtspMountPoints* self)
+static void
+rtsp_mount_points_init(RtspMountPoints* self)
 {
+    self->proxy = 0;
     self->p = new CxxPrivate;
 }
 
-void client_closed(GstRTSPClient* client, gpointer userData)
+static void
+client_closed(GstRTSPClient* client, gpointer userData)
 {
     RtspMountPoints* self = _RTSP_MOUNT_POINTS(userData);
 
@@ -98,6 +110,10 @@ void client_closed(GstRTSPClient* client, gpointer userData)
                     gst_rtsp_mount_points_remove_factory(
                         GST_RTSP_MOUNT_POINTS(self),
                         path.data());
+                    const std::string recordPath = path + RecordSuffix;
+                    gst_rtsp_mount_points_remove_factory(
+                        GST_RTSP_MOUNT_POINTS(self),
+                        recordPath.data());
                     p.pathsRefs.erase(pathRefsIt);
                 } else {
                     Log()->debug(
@@ -110,7 +126,8 @@ void client_closed(GstRTSPClient* client, gpointer userData)
     }
 }
 
-static gchar* make_path(GstRTSPMountPoints* mountPoints, const GstRTSPUrl* url)
+static gchar*
+make_path(GstRTSPMountPoints* mountPoints, const GstRTSPUrl* url)
 {
     RtspMountPoints* self = _RTSP_MOUNT_POINTS(mountPoints);
 
@@ -177,17 +194,17 @@ static gchar* make_path(GstRTSPMountPoints* mountPoints, const GstRTSPUrl* url)
 
         assert(addPathRef);
 
-        RtspPlayMediaFactory* playFactory =
-            rtsp_play_media_factory_new(splashSource);
-        RtspRecordMediaFactory* recordFactory =
-            rtsp_record_media_factory_new();
+        const std::string proxyName =
+            fmt::format("proxy{}", self->proxy++);
 
-        rtsp_play_media_factory_set_record_factory(playFactory, recordFactory);
-        rtsp_record_media_factory_set_play_factory(recordFactory, playFactory);
+        RtspPlayMediaFactory* playFactory =
+            rtsp_play_media_factory_new(splashSource, proxyName.c_str());
+        RtspRecordMediaFactory* recordFactory =
+            rtsp_record_media_factory_new(proxyName.c_str());
 
         gst_rtsp_mount_points_add_factory(
             mountPoints, url->abspath, GST_RTSP_MEDIA_FACTORY(playFactory));
-        GCharPtr recordUrl(g_strconcat(url->abspath, "?record", nullptr));
+        GCharPtr recordUrl(g_strconcat(url->abspath, RecordSuffix, nullptr));
         gst_rtsp_mount_points_add_factory(
             mountPoints, recordUrl.get(), GST_RTSP_MEDIA_FACTORY(recordFactory));
 

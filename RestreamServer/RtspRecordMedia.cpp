@@ -13,23 +13,31 @@ namespace RestreamServer
 struct _RtspRecordMedia
 {
     GstRTSPMedia parent_instance;
-
-    GstElement* proxy;
 };
 
 
-G_DEFINE_TYPE(RtspRecordMedia, rtsp_record_media, GST_TYPE_RTSP_MEDIA)
+G_DEFINE_TYPE(
+    RtspRecordMedia,
+    rtsp_record_media,
+    GST_TYPE_RTSP_MEDIA)
 
 
-GstElement* rtsp_record_media_create_element()
+GstElement*
+rtsp_record_media_create_element(
+    const std::string& proxyName)
 {
-    const gchar* pipeline =
-        "rtph264depay name=depay0 ! proxysink name=proxy";
+    Log()->trace(">> rtsp_record_media_create_element");
+
+    const std::string pipeline =
+        fmt::format(
+            "rtph264depay name=depay0 ! h264parse ! "
+            "interpipesink name={} sync=true allow-negotiation=false",
+            proxyName);
 
     GError* error = nullptr;
     GstElement* element =
         gst_parse_launch_full(
-            pipeline, NULL, GST_PARSE_FLAG_PLACE_IN_BIN,
+            pipeline.c_str(), NULL, GST_PARSE_FLAG_PLACE_IN_BIN,
             &error);
     GstGErrorPtr errorPtr(error);
 
@@ -42,21 +50,25 @@ GstElement* rtsp_record_media_create_element()
 }
 
 static void
-constructed(GObject* object)
+constructed(
+    GObject* object)
 {
     Log()->trace(">> RtspRecordMedia.constructed");
 
-    RtspRecordMedia* self = _RTSP_RECORD_MEDIA(object);
+    // RtspRecordMedia* self = _RTSP_RECORD_MEDIA(object);
 
-    GstRTSPMedia* selfMedia = GST_RTSP_MEDIA(object);
+    // GstRTSPMedia* selfMedia = GST_RTSP_MEDIA(object);
+}
 
-    GstElementPtr pipelinePtr(gst_rtsp_media_get_element(selfMedia));
-    GstElement* pipeline = pipelinePtr.get();
+static void
+finalize(
+    GObject* object)
+{
+    Log()->trace(">> RtspRecordMedia.finalize");
 
-    GstElementPtr proxyPtr(gst_bin_get_by_name(GST_BIN(pipeline), "proxy"));
-    self->proxy = proxyPtr.get(); // FIXME! should we keep ref?
+    // RtspRecordMedia* self = _RTSP_RECORD_MEDIA(object);
 
-    Log()->trace("<< RtspRecordMedia.constructed");
+    G_OBJECT_CLASS(rtsp_record_media_parent_class)->finalize(object);
 }
 
 static void
@@ -65,7 +77,6 @@ prepared(
     gpointer userData)
 {
     Log()->trace(">> RtspRecordMedia.prepared");
-    Log()->trace("<< RtspRecordMedia.prepared");
 }
 
 static void
@@ -76,34 +87,34 @@ unprepared(
     Log()->trace(">> RtspRecordMedia.unprepared");
 
     // RtspRecordMedia* self = _RTSP_RECORD_MEDIA(media);
-
-    Log()->trace("<< RtspRecordMedia.unprepared");
 }
 
 static void
-rtsp_record_media_class_init(RtspRecordMediaClass* klass)
+rtsp_record_media_class_init(
+    RtspRecordMediaClass* klass)
 {
+    Log()->trace(">> RtspRecordMedia.class_init");
+
     // GstRTSPMediaClass* parent_klass = GST_RTSP_MEDIA_CLASS(klass);
 
     GObjectClass* objectKlass = G_OBJECT_CLASS(klass);
 
     objectKlass->constructed = constructed;
+
+    GObjectClass* object_klass = G_OBJECT_CLASS(klass);
+    object_klass->finalize = finalize;
 }
 
 static void
-rtsp_record_media_init(RtspRecordMedia* self)
+rtsp_record_media_init(
+    RtspRecordMedia* self)
 {
-    // GstRTSPMedia* parent = GST_RTSP_MEDIA(self);
+    Log()->trace(">> RtspRecordMedia.init");
 
-    self->proxy = nullptr;
+    // GstRTSPMedia* parent = GST_RTSP_MEDIA(self);
 
     g_signal_connect(self, "prepared", G_CALLBACK(prepared), nullptr);
     g_signal_connect(self, "unprepared", G_CALLBACK(unprepared), nullptr);
-}
-
-GstElement* rtsp_record_media_get_proxy_sink(RtspRecordMedia* self)
-{
-    return self->proxy;
 }
 
 }

@@ -10,16 +10,14 @@ set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
-set(DEPS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/deps)
-
 include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}
     )
 
+add_subdirectory(deps/gst-interpipe)
 add_subdirectory(Common)
 add_subdirectory(RestreamServer)
 add_subdirectory(RestreamServerApp)
-
 
 file(GLOB SOURCES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
     [^.]*.h

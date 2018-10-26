@@ -12,17 +12,20 @@
 namespace RestreamServer
 {
 
-struct _RtspRecordMediaFactory;
-typedef struct _RtspRecordMediaFactory RtspRecordMediaFactory;
-
 G_BEGIN_DECLS
 
 #define TYPE_RTSP_PLAY_MEDIA_FACTORY rtsp_play_media_factory_get_type()
-G_DECLARE_FINAL_TYPE(RtspPlayMediaFactory, rtsp_play_media_factory, , RTSP_PLAY_MEDIA_FACTORY, GstRTSPMediaFactory)
+G_DECLARE_FINAL_TYPE(
+    RtspPlayMediaFactory,
+    rtsp_play_media_factory,
+    ,
+    RTSP_PLAY_MEDIA_FACTORY,
+    GstRTSPMediaFactory)
 
-RtspPlayMediaFactory* rtsp_play_media_factory_new(const URL& splashSource);
-void rtsp_play_media_factory_set_record_factory(RtspPlayMediaFactory*, RtspRecordMediaFactory*);
-RtspPlayMedia* rtsp_play_media_factory_get_media(RtspPlayMediaFactory*);
+RtspPlayMediaFactory*
+rtsp_play_media_factory_new(
+    const URL& splashSource,
+    const std::string& listenTo);
 
 G_END_DECLS
 
@@ -34,10 +37,5 @@ struct RtspPlayMediaFactoryUnref
     void operator() (RtspPlayMediaFactory* factory)
         { (*this)(G_OBJECT(factory)); }
 };
-
-typedef
-    std::unique_ptr<
-        RtspPlayMediaFactory,
-        RtspPlayMediaFactoryUnref> RtspPlayMediaFactoryPtr;
 
 }
