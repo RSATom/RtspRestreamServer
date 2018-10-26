@@ -14,12 +14,14 @@ struct GstUnref
     void operator() (GstCaps* caps)
         { gst_caps_unref(caps); }
 
+    void operator() (GstClock* clock)
+        { (*this)(G_OBJECT(clock)); }
+
     void operator() (GstElement* element)
         { (*this)(G_OBJECT(element)); }
 
     void operator() (GstPad* pad)
         { (*this)(G_OBJECT(pad)); }
-
 };
 
 typedef
@@ -31,6 +33,10 @@ typedef
     std::unique_ptr<
         GstCaps,
         GstUnref> GstCapsPtr;
+typedef
+    std::unique_ptr<
+        GstClock,
+        GstUnref> GstClockPtr;
 typedef
     std::unique_ptr<
         GstElement,
