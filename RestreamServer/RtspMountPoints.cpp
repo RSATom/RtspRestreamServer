@@ -69,8 +69,8 @@ rtsp_mount_points_class_init(RtspMountPointsClass* klass)
 
     GObjectClass* object_klass = G_OBJECT_CLASS(klass);
     object_klass->finalize =
-        [] (GObject* gobject) {
-            RtspMountPoints* self = _RTSP_MOUNT_POINTS(gobject);
+        [] (GObject* object) {
+            RtspMountPoints* self = _RTSP_MOUNT_POINTS(object);
             delete self->p;
             self->p = nullptr;
         };
