@@ -12,7 +12,7 @@ int main(int argc, char *argv[])
 
     GST_PLUGIN_STATIC_REGISTER(interpipe);
 
-    RestreamServer::Server restreamServer;
+    RestreamServer::Server restreamServer({});
 
     restreamServer.serverMain();
 
