@@ -73,6 +73,8 @@ rtsp_mount_points_class_init(RtspMountPointsClass* klass)
             RtspMountPoints* self = _RTSP_MOUNT_POINTS(object);
             delete self->p;
             self->p = nullptr;
+
+            G_OBJECT_CLASS(rtsp_mount_points_parent_class)->finalize(object);
         };
 }
 
