@@ -1,10 +1,17 @@
 #pragma once
 
+#include <functional>
+
 #include <gst/rtsp-server/rtsp-server.h>
 
 
 namespace RestreamServer
 {
+
+struct MountPointsCallbacks
+{
+    std::function<bool (const std::string& user, const std::string& path)> authorizeAccess;
+};
 
 G_BEGIN_DECLS
 
@@ -17,7 +24,7 @@ G_DECLARE_FINAL_TYPE(
     GstRTSPMountPoints)
 
 RtspMountPoints*
-rtsp_mount_points_new();
+rtsp_mount_points_new(const MountPointsCallbacks&);
 
 G_END_DECLS
 

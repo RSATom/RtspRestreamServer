@@ -7,6 +7,7 @@
 
 #include "Log.h"
 #include "StaticSources.h"
+#include "RtspAuth.h"
 #include "RtspMountPoints.h"
 
 
@@ -41,6 +42,8 @@ struct Server::Private
     GstRTSPServerPtr staticServer;
 
     GstRTSPServerPtr restreamServer;
+    GstRTSPAuthPtr auth;
+    GstRTSPTokenPtr anonymousToken;
     GstRTSPMountPointsPtr mountPoints;
 
     std::map<const GstRTSPClient*, ClientInfo> clients;
@@ -511,14 +514,42 @@ void Server::initStaticServer()
 void Server::initRestreamServer()
 {
     _p->restreamServer.reset(gst_rtsp_server_new());
-    _p->mountPoints.reset(GST_RTSP_MOUNT_POINTS(rtsp_mount_points_new()));
+
+    const AuthCallbacks authCallbacks {
+        .authenticationRequired = _p->callbacks.authenticationRequired,
+        .authenticate = _p->callbacks.authenticate,
+        .authorize = _p->callbacks.authorize };
+    _p->auth.reset(GST_RTSP_AUTH(rtsp_auth_new(authCallbacks)));
+
+    _p->anonymousToken.reset(
+        gst_rtsp_token_new(
+            GST_RTSP_TOKEN_MEDIA_FACTORY_ROLE, G_TYPE_STRING, "",
+            NULL));
+
+    MountPointsCallbacks mountPointsCallbacks;
+    if(authCallbacks.authorize) {
+        mountPointsCallbacks.authorizeAccess =
+            std::bind(
+                _p->callbacks.authorize,
+                std::placeholders::_1,
+                Action::ACCESS,
+                std::placeholders::_2);
+    };
+    _p->mountPoints.reset(
+        GST_RTSP_MOUNT_POINTS(
+            rtsp_mount_points_new(
+                mountPointsCallbacks)));
 
     GstRTSPServer* server = _p->restreamServer.get();
+    GstRTSPAuth* auth = _p->auth.get();
     GstRTSPMountPoints* mountPoints = _p->mountPoints.get();
+    GstRTSPToken* anonymousToken = _p->anonymousToken.get();
 
     gst_rtsp_server_set_service(server, RESTREAM_SERVER_PORT_STR);
 
     gst_rtsp_server_set_mount_points(server, mountPoints);
+    gst_rtsp_auth_set_default_token(auth, anonymousToken);
+    gst_rtsp_server_set_auth(server, auth);
 
     auto clientConnectedCallback =
         (void (*)(GstRTSPServer*, GstRTSPClient*, gpointer))

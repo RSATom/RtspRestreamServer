@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Config.h"
+#include "Action.h"
 #include "Log.h"
 
 
@@ -9,6 +10,10 @@ namespace RestreamServer
 
 struct Callbacks
 {
+    std::function<bool (const std::string& path)> authenticationRequired;
+    std::function<bool (const std::string& user, const std::string& pass)> authenticate;
+    std::function<bool (const std::string& user, Action, const std::string& path)> authorize;
+
     std::function<void (const std::string& path)> firstPlayerConnected;
     std::function<void (const std::string& path)> lastPlayerDisconnected;
     std::function<void (const std::string& path)> recorderConnected;

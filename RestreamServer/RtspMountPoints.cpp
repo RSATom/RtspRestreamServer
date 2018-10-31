@@ -24,6 +24,8 @@ namespace
 
 struct CxxPrivate
 {
+    MountPointsCallbacks callbacks;
+
     std::map<std::string, uint32_t> pathsRefs;
     std::map<GstRTSPClient*, std::set<std::string> > clientsToPaths;
 };
@@ -51,10 +53,13 @@ make_path(GstRTSPMountPoints* mountPoints, const GstRTSPUrl* url);
 
 
 RtspMountPoints*
-rtsp_mount_points_new()
+rtsp_mount_points_new(const MountPointsCallbacks& callbacks)
 {
     RtspMountPoints* instance =
         _RTSP_MOUNT_POINTS(g_object_new(TYPE_RTSP_MOUNT_POINTS, NULL));
+
+    if(instance)
+        instance->p->callbacks = callbacks;
 
     return instance;
 }
@@ -128,6 +133,26 @@ client_closed(GstRTSPClient* client, gpointer userData)
     }
 }
 
+static bool
+authorize_access(
+    RtspMountPoints* self,
+    GstRTSPContext* context,
+    const GstRTSPUrl* url)
+{
+    if(self->p->callbacks.authorizeAccess) {
+        const gchar* user = nullptr;
+        if(context->token) {
+            user =
+                gst_rtsp_token_get_string(
+                    context->token,
+                    GST_RTSP_TOKEN_MEDIA_FACTORY_ROLE);
+        }
+
+        return self->p->callbacks.authorizeAccess(user ? user : "", url->abspath);
+    } else
+        return true;
+}
+
 static gchar*
 make_path(GstRTSPMountPoints* mountPoints, const GstRTSPUrl* url)
 {
@@ -136,6 +161,9 @@ make_path(GstRTSPMountPoints* mountPoints, const GstRTSPUrl* url)
     GstRTSPContext* context = gst_rtsp_context_get_current();
     assert(context);
     if(!context)
+        return nullptr;
+
+    if(!authorize_access(self, context, url))
         return nullptr;
 
     const std::string path = url->abspath;
