@@ -5,10 +5,11 @@
 #include <set>
 #include <map>
 
+#include <CxxPtr/GlibPtr.h>
+#include <CxxPtr/GstRtspServerPtr.h>
+
 #include "Config.h"
 
-#include "Common/GlibPtr.h"
-#include "Common/GstRtspServerPtr.h"
 #include "Log.h"
 #include "RtspRecordMediaFactory.h"
 #include "RtspPlayMediaFactory.h"

@@ -2,7 +2,7 @@
 
 #include <glib.h>
 
-#include "Common/GstPtr.h"
+#include <CxxPtr/GstPtr.h>
 
 #include "Log.h"
 
@@ -39,7 +39,7 @@ rtsp_record_media_create_element(
         gst_parse_launch_full(
             pipeline.c_str(), NULL, GST_PARSE_FLAG_PLACE_IN_BIN,
             &error);
-    GstGErrorPtr errorPtr(error);
+    GErrorPtr errorPtr(error);
 
     if(errorPtr)
         Log()->critical(

@@ -4,8 +4,8 @@
 
 #include <gst/rtsp-server/rtsp-server.h>
 
+#include <CxxPtr/GlibPtr.h>
 #include <Common/Types.h>
-#include <Common/GlibPtr.h>
 
 
 namespace RestreamServer

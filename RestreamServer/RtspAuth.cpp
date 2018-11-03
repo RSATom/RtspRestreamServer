@@ -2,7 +2,7 @@
 
 #include <cassert>
 
-#include "Common/GstRtspServerPtr.h"
+#include <CxxPtr/GstRtspServerPtr.h>
 
 #include "Log.h"
 

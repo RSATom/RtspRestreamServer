@@ -2,8 +2,9 @@
 
 #include <set>
 
+#include <CxxPtr/GstRtspServerPtr.h>
+
 #include "Common/Types.h"
-#include "Common/GstRtspServerPtr.h"
 
 #include "Log.h"
 #include "StaticSources.h"
