@@ -4,8 +4,6 @@
 
 #include <gst/rtsp-server/rtsp-server.h>
 
-#include <Common/Types.h>
-
 #include "RtspRecordMedia.h"
 
 
