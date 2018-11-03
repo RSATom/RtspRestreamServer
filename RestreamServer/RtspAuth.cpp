@@ -96,10 +96,11 @@ send_response(
 static bool
 authentication_required(
     RtspAuth* auth,
+    GstRTSPMethod method,
     const GstRTSPUrl* url)
 {
     if(auth->p->callbacks.authenticationRequired)
-        return auth->p->callbacks.authenticationRequired(url->abspath);
+        return auth->p->callbacks.authenticationRequired(method, url->abspath);
     else
         return false;
 }
@@ -267,7 +268,7 @@ check(
 
     if(g_str_equal(check, GST_RTSP_AUTH_CHECK_URL)) {
         if(ensure_authenticated(auth, ctx) && ctx->token) {
-            const bool authRequired = authentication_required(self, ctx->uri);
+            const bool authRequired = authentication_required(self, ctx->method, ctx->uri);
             const bool authenticated = (ctx->token != defaultToken);
             if(!authRequired || authenticated)
                success = TRUE;

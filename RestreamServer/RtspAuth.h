@@ -12,7 +12,7 @@ namespace RestreamServer
 
 struct AuthCallbacks
 {
-    std::function<bool (const std::string& path)> authenticationRequired;
+    std::function<bool (GstRTSPMethod method, const std::string& path)> authenticationRequired;
     std::function<bool (const std::string& user, const std::string& pass)> authenticate;
     std::function<bool (const std::string& user, Action, const std::string& path)> authorize;
 };
