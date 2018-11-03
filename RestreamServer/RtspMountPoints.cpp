@@ -8,8 +8,6 @@
 #include <CxxPtr/GlibPtr.h>
 #include <CxxPtr/GstRtspServerPtr.h>
 
-#include "Config.h"
-
 #include "Log.h"
 #include "RtspRecordMediaFactory.h"
 #include "RtspPlayMediaFactory.h"
@@ -26,6 +24,9 @@ namespace
 struct CxxPrivate
 {
     MountPointsCallbacks callbacks;
+    std::string splashSource;
+    unsigned maxPathsCount;
+    unsigned maxClientsPerPath;
 
     std::map<std::string, uint32_t> pathsRefs;
     std::map<GstRTSPClient*, std::set<std::string> > clientsToPaths;
@@ -54,13 +55,21 @@ make_path(GstRTSPMountPoints* mountPoints, const GstRTSPUrl* url);
 
 
 RtspMountPoints*
-rtsp_mount_points_new(const MountPointsCallbacks& callbacks)
+rtsp_mount_points_new(
+    const MountPointsCallbacks& callbacks,
+    const std::string& splashSource,
+    unsigned maxPathsCount,
+    unsigned maxClientsPerPath)
 {
     RtspMountPoints* instance =
         _RTSP_MOUNT_POINTS(g_object_new(TYPE_RTSP_MOUNT_POINTS, NULL));
 
-    if(instance)
+    if(instance) {
         instance->p->callbacks = callbacks;
+        instance->p->splashSource = splashSource;
+        instance->p->maxPathsCount = maxPathsCount;
+        instance->p->maxClientsPerPath = maxPathsCount;
+    }
 
     return instance;
 }
@@ -173,30 +182,27 @@ make_path(GstRTSPMountPoints* mountPoints, const GstRTSPUrl* url)
     Log()->debug("make_path. client: {}, path: {}",
         static_cast<const void*>(context->client), path);
 
-    static const URL splashSource =
-        "rtsp://localhost:" STATIC_SERVER_PORT_STR BLUE;
-
     CxxPrivate& p = *self->p;
 
     auto pathRefsIt = p.pathsRefs.find(path);
-    if(MAX_PATHS_COUNT > 0 &&
+    if(self->p->maxPathsCount > 0 &&
        pathRefsIt == p.pathsRefs.end() &&
-       p.pathsRefs.size() >= MAX_PATHS_COUNT)
+       p.pathsRefs.size() >= self->p->maxPathsCount)
     {
         Log()->info(
             "Max paths count reached. client: {}, path: {}, count {}",
-            static_cast<const void*>(context->client), path, MAX_PATHS_COUNT);
+            static_cast<const void*>(context->client), path, self->p->maxPathsCount);
 
         return nullptr;
     }
 
-    if(MAX_CLIENTS_PER_PATH > 0 &&
+    if(self->p->maxClientsPerPath > 0 &&
        pathRefsIt != p.pathsRefs.end() &&
-       pathRefsIt->second >= MAX_CLIENTS_PER_PATH)
+       pathRefsIt->second >= self->p->maxClientsPerPath)
     {
         Log()->info(
             "Max clients count per path reached. client: {}, path: {}, count {}",
-            static_cast<const void*>(context->client), path, MAX_PATHS_COUNT);
+            static_cast<const void*>(context->client), path, self->p->maxClientsPerPath);
 
         return nullptr;
     }
@@ -229,7 +235,9 @@ make_path(GstRTSPMountPoints* mountPoints, const GstRTSPUrl* url)
             fmt::format("proxy{}", self->proxy++);
 
         RtspPlayMediaFactory* playFactory =
-            rtsp_play_media_factory_new(splashSource, proxyName.c_str());
+            rtsp_play_media_factory_new(
+                self->p->splashSource.c_str(),
+                proxyName.c_str());
         RtspRecordMediaFactory* recordFactory =
             rtsp_record_media_factory_new(proxyName.c_str());
 

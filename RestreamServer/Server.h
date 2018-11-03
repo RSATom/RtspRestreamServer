@@ -25,7 +25,12 @@ struct Callbacks
 class Server
 {
 public:
-    Server(const Callbacks&);
+    Server(
+        const Callbacks&,
+        unsigned short staticPort,
+        unsigned short restreamPort,
+        unsigned maxPathsCount = 0,
+        unsigned maxClientsPerPath = 0);
     ~Server();
 
     void serverMain();

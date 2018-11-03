@@ -24,7 +24,11 @@ G_DECLARE_FINAL_TYPE(
     GstRTSPMountPoints)
 
 RtspMountPoints*
-rtsp_mount_points_new(const MountPointsCallbacks&);
+rtsp_mount_points_new(
+    const MountPointsCallbacks&,
+    const std::string& splashSource,
+    unsigned maxPathsCount,
+    unsigned maxClientsPerPath);
 
 G_END_DECLS
 

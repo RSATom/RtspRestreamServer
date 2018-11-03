@@ -2,6 +2,8 @@
 
 #include <gst/gst.h>
 
+#include "Config.h"
+
 extern "C" {
 GST_PLUGIN_STATIC_DECLARE(interpipe);
 }
@@ -29,7 +31,9 @@ int main(int argc, char *argv[])
     GST_PLUGIN_STATIC_REGISTER(interpipe);
 
     RestreamServer::Server restreamServer(
-        { .authenticationRequired = authenticationRequired });
+        { .authenticationRequired = authenticationRequired },
+        STATIC_SERVER_PORT, RESTREAM_SERVER_PORT,
+        MAX_PATHS_COUNT, MAX_CLIENTS_PER_PATH);
 
     restreamServer.serverMain();
 

@@ -35,10 +35,19 @@ struct PathInfo
 
 struct Server::Private
 {
-    Private(const Callbacks& callbacks) :
-        callbacks(callbacks) {}
+    Private(
+        const Callbacks& callbacks,
+        unsigned short staticPort,
+        unsigned short restreamPort,
+        unsigned maxPathsCount,
+        unsigned maxClientsPerPath);
 
     Callbacks callbacks;
+
+    const unsigned short staticPort;
+    const unsigned short restreamPort;
+    const unsigned maxPathsCount;
+    const unsigned maxClientsPerPath;
 
     GstRTSPServerPtr staticServer;
 
@@ -74,6 +83,20 @@ struct Server::Private
 const std::shared_ptr<spdlog::logger>& Server::Log()
 {
     return RestreamServer::Log();
+}
+
+Server::Private::Private(
+    const Callbacks& callbacks,
+    unsigned short staticPort,
+    unsigned short restreamPort,
+    unsigned maxPathsCount,
+    unsigned maxClientsPerPath) :
+    callbacks(callbacks),
+    staticPort(staticPort),
+    restreamPort(restreamPort),
+    maxPathsCount(maxPathsCount),
+    maxClientsPerPath(maxClientsPerPath)
+{
 }
 
 void Server::Private::firstPlayerConnected(
@@ -415,8 +438,17 @@ void Server::Private::onClientClosed(const GstRTSPClient* client)
 }
 
 
-Server::Server(const Callbacks& callbacks) :
-    _p(new Private(callbacks))
+Server::Server(
+    const Callbacks& callbacks,
+    unsigned short staticPort,
+    unsigned short restreamPort,
+    unsigned maxPathsCount,
+    unsigned maxClientsPerPath) :
+    _p(
+        new Private(
+            callbacks,
+            staticPort, restreamPort,
+            maxPathsCount, maxClientsPerPath))
 {
     initStaticServer();
     initRestreamServer();
@@ -536,10 +568,14 @@ void Server::initRestreamServer()
                 Action::ACCESS,
                 std::placeholders::_2);
     };
+
     _p->mountPoints.reset(
         GST_RTSP_MOUNT_POINTS(
             rtsp_mount_points_new(
-                mountPointsCallbacks)));
+                mountPointsCallbacks,
+                fmt::format("rtsp://localhost:{}/blue", _p->staticPort).c_str(),
+                _p->maxPathsCount,
+                _p->maxClientsPerPath)));
 
     GstRTSPServer* server = _p->restreamServer.get();
     GstRTSPAuth* auth = _p->auth.get();
