@@ -6,7 +6,7 @@
 
 #include <CxxPtr/GlibPtr.h>
 
-#include "Common/Types.h"
+#include "Types.h"
 
 
 namespace RestreamServer

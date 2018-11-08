@@ -19,7 +19,6 @@ include_directories(
 
 add_subdirectory(deps/CxxPtr)
 add_subdirectory(deps/gst-interpipe)
-add_subdirectory(Common)
 add_subdirectory(RestreamServer)
 add_subdirectory(RestreamServerApp)
 

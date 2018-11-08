@@ -16,5 +16,4 @@ target_include_directories(${PROJECT_NAME} PRIVATE
     ${GSTREAMER_INCLUDE_DIRS})
 target_link_libraries(${PROJECT_NAME}
     RestreamServer
-    Common
     gst-interpipe)

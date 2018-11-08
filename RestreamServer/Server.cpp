@@ -4,10 +4,9 @@
 
 #include <CxxPtr/GstRtspServerPtr.h>
 
-#include "Common/Types.h"
-
 #include "Log.h"
 #include "StaticSources.h"
+#include "Types.h"
 #include "RtspAuth.h"
 #include "RtspMountPoints.h"
 
