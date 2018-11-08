@@ -15,7 +15,7 @@
 
 static const gchar* RecordSuffix = "?record";
 
-namespace RestreamServer
+namespace RestreamServerLib
 {
 
 namespace

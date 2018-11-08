@@ -7,7 +7,7 @@
 #include "Action.h"
 
 
-namespace RestreamServer
+namespace RestreamServerLib
 {
 
 struct AuthCallbacks

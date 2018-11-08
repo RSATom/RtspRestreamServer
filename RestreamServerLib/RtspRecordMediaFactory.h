@@ -7,7 +7,7 @@
 #include "RtspRecordMedia.h"
 
 
-namespace RestreamServer
+namespace RestreamServerLib
 {
 
 G_BEGIN_DECLS

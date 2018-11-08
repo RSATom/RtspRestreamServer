@@ -2,12 +2,11 @@
 
 #include <gst/rtsp/gstrtspdefs.h>
 
-#include "Config.h"
 #include "Action.h"
 #include "Log.h"
 
 
-namespace RestreamServer
+namespace RestreamServerLib
 {
 
 struct Callbacks

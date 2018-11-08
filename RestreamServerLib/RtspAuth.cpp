@@ -7,7 +7,7 @@
 #include "Log.h"
 
 
-namespace RestreamServer
+namespace RestreamServerLib
 {
 
 struct CxxPrivate

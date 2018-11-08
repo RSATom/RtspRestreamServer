@@ -7,7 +7,7 @@
 #include <spdlog/spdlog.h>
 
 
-namespace RestreamServer
+namespace RestreamServerLib
 {
 
 const std::shared_ptr<spdlog::logger>& Log();

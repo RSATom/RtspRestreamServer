@@ -5,7 +5,7 @@
 #include <gst/rtsp-server/rtsp-server.h>
 
 
-namespace RestreamServer
+namespace RestreamServerLib
 {
 
 struct MountPointsCallbacks

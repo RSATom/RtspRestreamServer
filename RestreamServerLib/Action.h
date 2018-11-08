@@ -1,7 +1,7 @@
 #pragma once
 
 
-namespace RestreamServer
+namespace RestreamServerLib
 {
 
 enum class Action {

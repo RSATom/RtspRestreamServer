@@ -19,7 +19,7 @@ include_directories(
 
 add_subdirectory(deps/CxxPtr)
 add_subdirectory(deps/gst-interpipe)
-add_subdirectory(RestreamServer)
+add_subdirectory(RestreamServerLib)
 
 if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
     add_subdirectory(RestreamServerApp)

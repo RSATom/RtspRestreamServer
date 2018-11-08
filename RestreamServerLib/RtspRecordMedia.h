@@ -7,7 +7,7 @@
 #include <CxxPtr/GlibPtr.h>
 
 
-namespace RestreamServer
+namespace RestreamServerLib
 {
 
 G_BEGIN_DECLS

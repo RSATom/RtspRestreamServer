@@ -4,7 +4,7 @@
 #include "RtspRecordMediaFactory.h"
 
 
-namespace RestreamServer
+namespace RestreamServerLib
 {
 
 namespace

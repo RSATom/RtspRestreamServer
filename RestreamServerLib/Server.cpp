@@ -11,7 +11,7 @@
 #include "RtspMountPoints.h"
 
 
-namespace RestreamServer
+namespace RestreamServerLib
 {
 
 namespace
@@ -81,7 +81,7 @@ struct Server::Private
 
 const std::shared_ptr<spdlog::logger>& Server::Log()
 {
-    return RestreamServer::Log();
+    return RestreamServerLib::Log();
 }
 
 Server::Private::Private(
@@ -266,8 +266,8 @@ GstRTSPStatusCode Server::Private::beforePlay(
     const std::string path = url->abspath;
 
     auto pathIt = paths.find(path);
-    if(MAX_CLIENTS_PER_PATH > 0 && paths.end() != pathIt) {
-        if(pathIt->second.playCount >= (MAX_CLIENTS_PER_PATH - 1)) {
+    if(maxClientsPerPath > 0 && paths.end() != pathIt) {
+        if(pathIt->second.playCount >= (maxClientsPerPath - 1)) {
             Log()->error(
                 "Max players count limit reached. "
                 "client: {}, path: {}, sessionId: {}",
@@ -466,7 +466,9 @@ void Server::initStaticServer()
     GstRTSPServer* server = _p->staticServer.get();
     GstRTSPMountPoints* mountPoints = mountPointsPtr.get();
 
-    gst_rtsp_server_set_service(server, STATIC_SERVER_PORT_STR);
+    gst_rtsp_server_set_service(
+        server,
+        fmt::format("{}", _p->staticPort).c_str());
 
     gst_rtsp_server_set_mount_points(server, mountPoints);
 
@@ -581,7 +583,9 @@ void Server::initRestreamServer()
     GstRTSPMountPoints* mountPoints = _p->mountPoints.get();
     GstRTSPToken* anonymousToken = _p->anonymousToken.get();
 
-    gst_rtsp_server_set_service(server, RESTREAM_SERVER_PORT_STR);
+    gst_rtsp_server_set_service(
+        server,
+        fmt::format("{}", _p->restreamPort).c_str());
 
     gst_rtsp_server_set_mount_points(server, mountPoints);
     gst_rtsp_auth_set_default_token(auth, anonymousToken);
