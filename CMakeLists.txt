@@ -20,7 +20,10 @@ include_directories(
 add_subdirectory(deps/CxxPtr)
 add_subdirectory(deps/gst-interpipe)
 add_subdirectory(RestreamServer)
-add_subdirectory(RestreamServerApp)
+
+if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
+    add_subdirectory(RestreamServerApp)
+endif()
 
 file(GLOB SOURCES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
     [^.]*.h
