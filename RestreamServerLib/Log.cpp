@@ -10,7 +10,7 @@ void InitLoggers()
 {
     spdlog::sink_ptr sink = std::make_shared<spdlog::sinks::stderr_sink_st>();
 
-    RestreamServer = spdlog::create("RestreamServer", { sink });
+    RestreamServer = spdlog::create("RestreamServerLib", { sink });
 
 #ifndef NDEBUG
     RestreamServer->set_level(spdlog::level::debug);
