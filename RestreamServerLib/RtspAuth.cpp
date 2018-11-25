@@ -13,6 +13,7 @@ namespace RestreamServerLib
 struct CxxPrivate
 {
     AuthCallbacks callbacks;
+    bool useTls;
 };
 
 struct _RtspAuth
@@ -32,15 +33,33 @@ finalize(GObject*);
 static gboolean
 check(GstRTSPAuth*, GstRTSPContext*, const gchar*);
 static gboolean
+verify_certificate(
+    GstRTSPAuth*,
+    GTlsConnection*,
+    GTlsCertificate*,
+    GTlsCertificateFlags,
+    gpointer);
+static gboolean
 authenticate(GstRTSPAuth*, GstRTSPContext*);
 
 RtspAuth*
-rtsp_auth_new(const AuthCallbacks& callbacks)
+rtsp_auth_new(const AuthCallbacks& callbacks, bool useTls)
 {
     RtspAuth* instance = (RtspAuth*)g_object_new(TYPE_RTSP_AUTH, NULL);
 
-    if(instance)
+    if(instance) {
         instance->p->callbacks= callbacks;
+        instance->p->useTls = useTls;
+
+        if(useTls) {
+            gst_rtsp_auth_set_tls_authentication_mode(
+                GST_RTSP_AUTH(instance),
+                G_TLS_AUTHENTICATION_REQUESTED);
+
+            g_signal_connect(instance, "accept-certificate",
+                G_CALLBACK(verify_certificate), nullptr);
+        }
+    }
 
     return instance;
 }
@@ -93,6 +112,22 @@ send_response(
     gst_rtsp_client_send_message(ctx->client, ctx->session, ctx->response);
 }
 
+static gboolean
+verify_certificate(
+    GstRTSPAuth* auth,
+    GTlsConnection* connection,
+    GTlsCertificate* peerCert,
+    GTlsCertificateFlags errors,
+    gpointer userData)
+{
+    RtspAuth* self = _RTSP_AUTH(auth);
+
+    if(self->p->callbacks.tlsAuthenticate)
+        return self->p->callbacks.tlsAuthenticate(peerCert, nullptr);
+    else
+        return FALSE;
+}
+
 static bool
 authentication_required(
     RtspAuth* auth,
@@ -132,6 +167,37 @@ authorize(
         return true;
     else
         return false;
+}
+
+static bool
+authenticate_by_certificate(
+    RtspAuth* auth,
+    GstRTSPContext* ctx)
+{
+    RtspAuth* self = _RTSP_AUTH(auth);
+
+    GTlsConnection* tlsConnection = gst_rtsp_connection_get_tls(ctx->conn, nullptr);
+    if(!tlsConnection) {
+        Log()->error("gst_rtsp_connection_get_tls failed");
+        return false;
+    }
+
+    GTlsCertificate* peerCert = g_tls_connection_get_peer_certificate(tlsConnection);
+    if(!peerCert) {
+        Log()->error("g_tls_connection_get_peer_certificate failed");
+        return false;
+    }
+
+    std::string userName;
+    if(self->p->callbacks.tlsAuthenticate(peerCert, &userName)) {
+        ctx->token =
+            gst_rtsp_token_new(
+                GST_RTSP_TOKEN_MEDIA_FACTORY_ROLE, G_TYPE_STRING,
+                userName.data(), NULL);
+        return true;
+    }
+
+    return false;
 }
 
 static void
@@ -191,6 +257,11 @@ authenticate(
     }
 
     RtspAuth* self = _RTSP_AUTH(auth);
+
+    if(self->p->useTls && authenticate_by_certificate(self, ctx)) {
+        Log()->debug("authenticate. authenticated by certificate");
+        return TRUE;
+    }
 
     GstRTSPToken* defaultToken = gst_rtsp_auth_get_default_token(auth);
     // FIXME! it looks like we shouldn't add ref to token. Look rtsp-auth.c:747

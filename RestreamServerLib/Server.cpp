@@ -441,6 +441,7 @@ Server::Server(
     const Callbacks& callbacks,
     unsigned short staticPort,
     unsigned short restreamPort,
+    bool useTls,
     unsigned maxPathsCount,
     unsigned maxClientsPerPath) :
     _p(
@@ -450,7 +451,7 @@ Server::Server(
             maxPathsCount, maxClientsPerPath))
 {
     initStaticServer();
-    initRestreamServer();
+    initRestreamServer(useTls);
 }
 
 Server::~Server()
@@ -545,15 +546,16 @@ void Server::initStaticServer()
     }
 }
 
-void Server::initRestreamServer()
+void Server::initRestreamServer(bool useTls)
 {
     _p->restreamServer.reset(gst_rtsp_server_new());
 
     const AuthCallbacks authCallbacks {
+        .tlsAuthenticate = _p->callbacks.tlsAuthenticate,
         .authenticationRequired = _p->callbacks.authenticationRequired,
         .authenticate = _p->callbacks.authenticate,
         .authorize = _p->callbacks.authorize };
-    _p->auth.reset(GST_RTSP_AUTH(rtsp_auth_new(authCallbacks)));
+    _p->auth.reset(GST_RTSP_AUTH(rtsp_auth_new(authCallbacks, useTls)));
 
     _p->anonymousToken.reset(
         gst_rtsp_token_new(
@@ -633,6 +635,11 @@ void Server::serverMain()
         gst_rtsp_server_get_bound_port(restreamServer));
 
     g_main_loop_run(loop);
+}
+
+void Server::setTlsCertificate(GTlsCertificate* certificate)
+{
+    gst_rtsp_auth_set_tls_certificate(_p->auth.get(), certificate);
 }
 
 }
