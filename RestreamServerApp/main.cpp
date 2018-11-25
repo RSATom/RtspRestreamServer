@@ -30,8 +30,11 @@ int main(int argc, char *argv[])
 
     GST_PLUGIN_STATIC_REGISTER(interpipe);
 
+    RestreamServerLib::Callbacks callbacks;
+    callbacks.authenticationRequired = authenticationRequired;
+
     RestreamServerLib::Server restreamServer(
-        { .authenticationRequired = authenticationRequired },
+        callbacks,
         STATIC_SERVER_PORT, RESTREAM_SERVER_PORT,
         MAX_PATHS_COUNT, MAX_CLIENTS_PER_PATH);
 
