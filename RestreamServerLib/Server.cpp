@@ -569,7 +569,8 @@ void Server::initRestreamServer(bool useTls)
                 _p->callbacks.authorize,
                 std::placeholders::_1,
                 Action::ACCESS,
-                std::placeholders::_2);
+                std::placeholders::_2,
+                std::placeholders::_3);
     };
 
     _p->mountPoints.reset(

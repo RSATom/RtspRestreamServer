@@ -149,6 +149,14 @@ authorize_access(
     GstRTSPContext* context,
     const GstRTSPUrl* url)
 {
+    bool record = false;
+    if(url->query != nullptr ) {
+        if(0 == g_strcmp0(url->query, Private::RecordSuffix))
+            record = true;
+        else
+            return false;
+    }
+
     if(self->p->callbacks.authorizeAccess) {
         const gchar* user = nullptr;
         if(context->token) {
@@ -158,7 +166,11 @@ authorize_access(
                     GST_RTSP_TOKEN_MEDIA_FACTORY_ROLE);
         }
 
-        return self->p->callbacks.authorizeAccess(user ? user : "", url->abspath);
+        return
+            self->p->callbacks.authorizeAccess(
+                user ? user : "",
+                url->abspath,
+                record);
     } else
         return true;
 }

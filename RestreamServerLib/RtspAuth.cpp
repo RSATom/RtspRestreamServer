@@ -5,6 +5,7 @@
 #include <CxxPtr/GstRtspServerPtr.h>
 
 #include "Log.h"
+#include "Private.h"
 
 
 namespace RestreamServerLib
@@ -161,8 +162,21 @@ authorize(
     Action action,
     const GstRTSPUrl* url)
 {
+    bool record = false;
+    if(url->query != nullptr ) {
+        if(0 == g_strcmp0(url->query, Private::RecordSuffix))
+            record = true;
+        else
+            return false;
+    }
+
     if(auth->p->callbacks.authorize)
-        return auth->p->callbacks.authorize(userName, action, url->abspath);
+        return
+            auth->p->callbacks.authorize(
+                userName,
+                action,
+                url->abspath,
+                record);
     else if(userName[0] == '\0')
         return true;
     else

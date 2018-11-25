@@ -10,7 +10,7 @@ namespace RestreamServerLib
 
 struct MountPointsCallbacks
 {
-    std::function<bool (const std::string& user, const std::string& path)> authorizeAccess;
+    std::function<bool (const std::string& user, const std::string& path, bool record)> authorizeAccess;
 };
 
 G_BEGIN_DECLS
