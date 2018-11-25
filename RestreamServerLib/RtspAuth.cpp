@@ -49,7 +49,7 @@ rtsp_auth_new(const AuthCallbacks& callbacks, bool useTls)
     RtspAuth* instance = (RtspAuth*)g_object_new(TYPE_RTSP_AUTH, NULL);
 
     if(instance) {
-        instance->p->callbacks= callbacks;
+        instance->p->callbacks = callbacks;
         instance->p->useTls = useTls;
 
         if(useTls) {
