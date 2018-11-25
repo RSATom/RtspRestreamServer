@@ -12,8 +12,8 @@
 #include "RtspRecordMediaFactory.h"
 #include "RtspPlayMediaFactory.h"
 #include "StaticSources.h"
+#include "Private.h"
 
-static const gchar* RecordSuffix = "?record";
 
 namespace RestreamServerLib
 {
@@ -127,7 +127,7 @@ client_closed(GstRTSPClient* client, gpointer userData)
                     gst_rtsp_mount_points_remove_factory(
                         GST_RTSP_MOUNT_POINTS(self),
                         path.data());
-                    const std::string recordPath = path + RecordSuffix;
+                    const std::string recordPath = path + Private::RecordSuffix;
                     gst_rtsp_mount_points_remove_factory(
                         GST_RTSP_MOUNT_POINTS(self),
                         recordPath.data());
@@ -243,7 +243,7 @@ make_path(GstRTSPMountPoints* mountPoints, const GstRTSPUrl* url)
 
         gst_rtsp_mount_points_add_factory(
             mountPoints, url->abspath, GST_RTSP_MEDIA_FACTORY(playFactory));
-        GCharPtr recordUrl(g_strconcat(url->abspath, RecordSuffix, nullptr));
+        GCharPtr recordUrl(g_strconcat(url->abspath, "?", Private::RecordSuffix, nullptr));
         gst_rtsp_mount_points_add_factory(
             mountPoints, recordUrl.get(), GST_RTSP_MEDIA_FACTORY(recordFactory));
 
