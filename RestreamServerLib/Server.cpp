@@ -58,23 +58,25 @@ struct Server::Private
     std::map<const GstRTSPClient*, ClientInfo> clients;
     std::map<std::string, PathInfo> paths;
 
+    inline const gchar* user(const GstRTSPContext*) const;
+
     bool isRecording(const GstRTSPClient* client, const std::string& path);
     PathInfo& registerPath(const GstRTSPClient*, const std::string& path);
 
     void onClientConnected(GstRTSPClient*);
 
     GstRTSPStatusCode beforePlay(const GstRTSPClient*, const GstRTSPUrl*, const gchar* sessionId);
-    void onPlay(const GstRTSPClient*, const GstRTSPUrl*, const gchar* sessionId);
+    void onPlay(const GstRTSPClient*, const GstRTSPContext*, const gchar* sessionId);
     GstRTSPStatusCode beforeRecord(const GstRTSPClient*, const GstRTSPUrl*, const gchar* sessionId);
-    void onRecord(const GstRTSPClient*, const GstRTSPUrl*, const gchar* sessionId);
+    void onRecord(const GstRTSPClient*, const GstRTSPContext*, const gchar* sessionId);
     void onTeardown(const GstRTSPClient*, const GstRTSPUrl*, const gchar* sessionId);
 
     void onClientClosed(const GstRTSPClient*);
 
-    void firstPlayerConnected(const std::string& path, const PathInfo&);
+    void firstPlayerConnected(const GstRTSPContext* ctx, const std::string& path, const PathInfo&);
     void lastPlayerDisconnected(const std::string& path, const PathInfo&);
 
-    void recorderConnected(const std::string& path, const PathInfo&);
+    void recorderConnected(const GstRTSPContext* ctx, const std::string& path, const PathInfo&);
     void recorderDisconnected(const std::string& path, const PathInfo&);
 };
 
@@ -98,7 +100,16 @@ Server::Private::Private(
 {
 }
 
+const gchar* Server::Private::user(const GstRTSPContext* ctx) const
+{
+    return
+        ctx->token ?
+            gst_rtsp_token_get_string(ctx->token, GST_RTSP_TOKEN_MEDIA_FACTORY_ROLE) :
+            "";
+}
+
 void Server::Private::firstPlayerConnected(
+    const GstRTSPContext* ctx,
     const std::string& path,
     const PathInfo&)
 {
@@ -107,7 +118,7 @@ void Server::Private::firstPlayerConnected(
         path);
 
     if(callbacks.firstPlayerConnected)
-        callbacks.firstPlayerConnected(path);
+        callbacks.firstPlayerConnected(user(ctx), path);
 }
 
 void Server::Private::lastPlayerDisconnected(
@@ -123,6 +134,7 @@ void Server::Private::lastPlayerDisconnected(
 }
 
 void Server::Private::recorderConnected(
+    const GstRTSPContext* ctx,
     const std::string& path,
     const PathInfo&)
 {
@@ -131,7 +143,7 @@ void Server::Private::recorderConnected(
         path);
 
     if(callbacks.recorderConnected)
-        callbacks.recorderConnected(path);
+        callbacks.recorderConnected(user(ctx), path);
 }
 
 void Server::Private::recorderDisconnected(
@@ -209,7 +221,7 @@ void Server::Private::onClientConnected(GstRTSPClient* client)
                 static_cast<Private*>(userData);
             const gchar* sessionId =
                 gst_rtsp_session_get_sessionid(context->session);
-            p->onPlay(client, context->uri, sessionId);
+            p->onPlay(client, context, sessionId);
         };
     g_signal_connect(client, "play-request", GCallback(playCallback), this);
 
@@ -230,7 +242,7 @@ void Server::Private::onClientConnected(GstRTSPClient* client)
                 static_cast<Private*>(userData);
             const gchar* sessionId =
                 gst_rtsp_session_get_sessionid(context->session);
-            p->onRecord(client, context->uri, sessionId);
+            p->onRecord(client, context, sessionId);
         };
     g_signal_connect(client, "record-request", GCallback(recordCallback), this);
 
@@ -281,20 +293,20 @@ GstRTSPStatusCode Server::Private::beforePlay(
 
 void Server::Private::onPlay(
     const GstRTSPClient* client,
-    const GstRTSPUrl* url,
+    const GstRTSPContext* ctx,
     const gchar* sessionId)
 {
     Log()->debug(
         "Server.play."
         " client: {}, path: {}, sessionId: {}",
-        static_cast<const void*>(client), url->abspath, sessionId);
+        static_cast<const void*>(client), ctx->uri->abspath, sessionId);
 
-    const std::string path = url->abspath;
+    const std::string path = ctx->uri->abspath;
 
     PathInfo& pathInfo = registerPath(client, path);
     ++pathInfo.playCount;
     if(1 == pathInfo.playCount)
-        firstPlayerConnected(path, pathInfo);
+        firstPlayerConnected(ctx, path, pathInfo);
 }
 
 GstRTSPStatusCode Server::Private::beforeRecord(
@@ -318,26 +330,26 @@ GstRTSPStatusCode Server::Private::beforeRecord(
 
 void Server::Private::onRecord(
     const GstRTSPClient* client,
-    const GstRTSPUrl* url,
+    const GstRTSPContext* ctx,
     const gchar* sessionId)
 {
     Log()->debug(
         "Server.record. "
         "client: {}, path: {}, sessionId: {}",
-        static_cast<const void*>(client), url->abspath, sessionId);
+        static_cast<const void*>(client), ctx->uri->abspath, sessionId);
 
-    const std::string path = url->abspath;
+    const std::string path = ctx->uri->abspath;
 
     PathInfo& pathInfo = registerPath(client, path);
     if(pathInfo.recordClient || !pathInfo.recordSessionId.empty()) {
         Log()->critical(
             "Second record on the same path. client: {}, path: {}",
-            static_cast<const void*>(client), url->abspath);
+            static_cast<const void*>(client), ctx->uri->abspath);
     } else {
         pathInfo.recordClient = client;
         pathInfo.recordSessionId = sessionId;
 
-        recorderConnected(path, pathInfo);
+        recorderConnected(ctx, path, pathInfo);
     }
 }
 

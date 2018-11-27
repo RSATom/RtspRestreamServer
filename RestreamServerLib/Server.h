@@ -18,9 +18,9 @@ struct Callbacks
     std::function<bool (const std::string& user, const std::string& pass)> authenticate;
     std::function<bool (const std::string& user, Action, const std::string& path, bool record)> authorize;
 
-    std::function<void (const std::string& path)> firstPlayerConnected;
+    std::function<void (const std::string& user, const std::string& path)> firstPlayerConnected;
     std::function<void (const std::string& path)> lastPlayerDisconnected;
-    std::function<void (const std::string& path)> recorderConnected;
+    std::function<void (const std::string& user, const std::string& path)> recorderConnected;
     std::function<void (const std::string& path)> recorderDisconnected;
 };
 
