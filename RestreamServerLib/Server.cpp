@@ -73,11 +73,11 @@ struct Server::Private
 
     void onClientClosed(const GstRTSPClient*);
 
-    void firstPlayerConnected(const GstRTSPContext* ctx, const std::string& path, const PathInfo&);
-    void lastPlayerDisconnected(const std::string& path, const PathInfo&);
+    void firstPlayerConnected(const GstRTSPContext* ctx, const std::string& path);
+    void lastPlayerDisconnected(const std::string& path);
 
-    void recorderConnected(const GstRTSPContext* ctx, const std::string& path, const PathInfo&);
-    void recorderDisconnected(const std::string& path, const PathInfo&);
+    void recorderConnected(const GstRTSPContext* ctx, const std::string& path);
+    void recorderDisconnected(const std::string& path);
 };
 
 
@@ -110,8 +110,7 @@ const gchar* Server::Private::user(const GstRTSPContext* ctx) const
 
 void Server::Private::firstPlayerConnected(
     const GstRTSPContext* ctx,
-    const std::string& path,
-    const PathInfo&)
+    const std::string& path)
 {
     Log()->debug(
         "First player connected. Path: {}",
@@ -122,8 +121,7 @@ void Server::Private::firstPlayerConnected(
 }
 
 void Server::Private::lastPlayerDisconnected(
-    const std::string& path,
-    const PathInfo&)
+    const std::string& path)
 {
     Log()->debug(
         "Last player disconnected. Path: {}",
@@ -135,8 +133,7 @@ void Server::Private::lastPlayerDisconnected(
 
 void Server::Private::recorderConnected(
     const GstRTSPContext* ctx,
-    const std::string& path,
-    const PathInfo&)
+    const std::string& path)
 {
     Log()->debug(
         "Recorder connected. Path: {}",
@@ -147,8 +144,7 @@ void Server::Private::recorderConnected(
 }
 
 void Server::Private::recorderDisconnected(
-    const std::string& path,
-    const PathInfo&)
+    const std::string& path)
 {
     Log()->debug(
         "Recorder disconnected. Path: {}",
@@ -306,7 +302,7 @@ void Server::Private::onPlay(
     PathInfo& pathInfo = registerPath(client, path);
     ++pathInfo.playCount;
     if(1 == pathInfo.playCount)
-        firstPlayerConnected(ctx, path, pathInfo);
+        firstPlayerConnected(ctx, path);
 }
 
 GstRTSPStatusCode Server::Private::beforeRecord(
@@ -349,7 +345,7 @@ void Server::Private::onRecord(
         pathInfo.recordClient = client;
         pathInfo.recordSessionId = sessionId;
 
-        recorderConnected(ctx, path, pathInfo);
+        recorderConnected(ctx, path);
     }
 }
 
@@ -380,12 +376,12 @@ void Server::Private::onTeardown(
         pathInfo.recordClient = nullptr;
         pathInfo.recordSessionId.clear();
 
-        recorderDisconnected(path, pathInfo);
+        recorderDisconnected(path);
     } else {
         if(pathInfo.playCount > 0) {
             --pathInfo.playCount;
             if(0 == pathInfo.playCount)
-                lastPlayerDisconnected(path, pathInfo);
+                lastPlayerDisconnected(path);
         } else {
             Log()->critical(
                 "Not registered reader teardown. client: {}, path: {}",
@@ -415,14 +411,14 @@ void Server::Private::onClientClosed(const GstRTSPClient* client)
                 if(refClients.empty()) {
                     // last client was reader
                     if(nullptr == pathInfo.recordClient)
-                        lastPlayerDisconnected(path, pathInfo);
+                        lastPlayerDisconnected(path);
                     else {
                         assert(pathInfo.recordClient == client);
 
                         pathInfo.recordClient = nullptr;
                         pathInfo.recordSessionId.clear();
 
-                        recorderDisconnected(path, pathInfo);
+                        recorderDisconnected(path);
                     }
 
                     paths.erase(pathIt);
@@ -431,13 +427,13 @@ void Server::Private::onClientClosed(const GstRTSPClient* client)
                         pathInfo.recordClient = nullptr;
                         pathInfo.recordSessionId.clear();
 
-                        recorderDisconnected(path, pathInfo);
+                        recorderDisconnected(path);
                     }
 
                     if(++refClients.begin() == refClients.end()) {
                         // if only writer remained
                         if(nullptr != pathInfo.recordClient)
-                            lastPlayerDisconnected(path, pathInfo);
+                            lastPlayerDisconnected(path);
                     }
                 }
             } else {
