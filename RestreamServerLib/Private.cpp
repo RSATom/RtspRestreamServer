@@ -16,7 +16,7 @@ bool IsRecordUrl(GstRTSPMethod method, const GstRTSPUrl* url)
     if(url->query != nullptr) {
         if(0 == g_strcmp0(url->query, RecordSuffix) ||
             (GST_RTSP_SETUP == method &&
-             0 == g_str_has_prefix(url->query, RECORD_SUFFIX "/"))) {
+             g_str_has_prefix(url->query, RECORD_SUFFIX "/"))) {
             record = true;
         }
     }

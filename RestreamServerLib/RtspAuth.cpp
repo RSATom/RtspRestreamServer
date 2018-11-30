@@ -160,23 +160,16 @@ authorize(
     RtspAuth* auth,
     const gchar* userName,
     Action action,
+    GstRTSPMethod method,
     const GstRTSPUrl* url)
 {
-    bool record = false;
-    if(url->query != nullptr ) {
-        if(0 == g_strcmp0(url->query, Private::RecordSuffix))
-            record = true;
-        else
-            return false;
-    }
-
     if(auth->p->callbacks.authorize)
         return
             auth->p->callbacks.authorize(
                 userName,
                 action,
                 url->abspath,
-                record);
+                Private::IsRecordUrl(method, url));
     else if(userName[0] == '\0')
         return true;
     else
@@ -364,9 +357,9 @@ check(
                 gst_rtsp_token_get_string(ctx->token, GST_RTSP_TOKEN_MEDIA_FACTORY_ROLE);
 
             if(g_str_equal(check, GST_RTSP_AUTH_CHECK_MEDIA_FACTORY_ACCESS))
-                success = authorize(self, user, Action::ACCESS, ctx->uri);
+                success = authorize(self, user, Action::ACCESS, ctx->method, ctx->uri);
             else if(g_str_equal(check, GST_RTSP_AUTH_CHECK_MEDIA_FACTORY_CONSTRUCT))
-                success = authorize(self, user, Action::CONSTRUCT, ctx->uri);
+                success = authorize(self, user, Action::CONSTRUCT, ctx->method, ctx->uri);
         }
     } else
         return GST_RTSP_AUTH_CLASS(rtsp_auth_parent_class)->check(auth, ctx, check);
