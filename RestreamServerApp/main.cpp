@@ -35,7 +35,7 @@ int main(int argc, char *argv[])
 
     RestreamServerLib::Server restreamServer(
         callbacks,
-        STATIC_SERVER_PORT, RESTREAM_SERVER_PORT,
+        STATIC_SERVER_PORT, RESTREAM_SERVER_PORT, false,
         MAX_PATHS_COUNT, MAX_CLIENTS_PER_PATH);
 
     restreamServer.serverMain();
