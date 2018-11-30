@@ -14,7 +14,7 @@ namespace RestreamServerLib
 struct Callbacks
 {
     std::function<bool (GTlsCertificate* peerCert, std::string* user)> tlsAuthenticate;
-    std::function<bool (GstRTSPMethod method, const std::string& path)> authenticationRequired;
+    std::function<bool (GstRTSPMethod method, const std::string& path, bool record)> authenticationRequired;
     std::function<bool (const std::string& user, const std::string& pass)> authenticate;
     std::function<bool (const std::string& user, Action, const std::string& path, bool record)> authorize;
 

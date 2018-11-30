@@ -136,7 +136,11 @@ authentication_required(
     const GstRTSPUrl* url)
 {
     if(auth->p->callbacks.authenticationRequired)
-        return auth->p->callbacks.authenticationRequired(method, url->abspath);
+        return
+            auth->p->callbacks.authenticationRequired(
+                method,
+                url->abspath,
+                Private::IsRecordUrl(method, url));
     else
         return false;
 }

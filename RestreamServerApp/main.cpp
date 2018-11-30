@@ -8,7 +8,7 @@ extern "C" {
 GST_PLUGIN_STATIC_DECLARE(interpipe);
 }
 
-bool authenticationRequired(GstRTSPMethod method, const std::string& path)
+bool authenticationRequired(GstRTSPMethod method, const std::string& path, bool record)
 {
     const std::string publicPath = "/test";
 
