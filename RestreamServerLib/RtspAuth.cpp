@@ -104,10 +104,16 @@ send_response(
         gst_rtsp_status_as_text(code), ctx->request);
 
     if(code == GST_RTSP_STS_UNAUTHORIZED) {
+#if GST_CHECK_VERSION(1, 14, 0)
         GstRTSPAuthClass *klass = GST_RTSP_AUTH_GET_CLASS(auth);
 
         if(klass->generate_authenticate_header)
             klass->generate_authenticate_header (auth, ctx);
+#else
+        /* we only have Basic for now */
+        gst_rtsp_message_add_header (ctx->response, GST_RTSP_HDR_WWW_AUTHENTICATE,
+            "Basic realm=\"GStreamer RTSP Server\"");
+#endif
     }
 
     gst_rtsp_client_send_message(ctx->client, ctx->session, ctx->response);
@@ -211,6 +217,7 @@ authenticate_by_certificate(
     return false;
 }
 
+#if GST_CHECK_VERSION(1, 12, 0)
 static void
 basic_authenticate(
     RtspAuth* auth,
@@ -256,6 +263,53 @@ basic_authenticate(
 
     g_strfreev(tokens);
 }
+#else
+static void
+basic_authenticate(
+    RtspAuth* auth,
+    gchar* authorization,
+    GstRTSPContext* ctx)
+{
+    if(ctx->token) {
+        Log()->debug("Already authenticated. Skipping.");
+        return;
+    }
+
+    gchar* loginAndPass = NULL;
+
+    gsize decodedLen;
+    guchar* decoded = g_base64_decode(authorization, &decodedLen);
+    if(decoded) {
+        loginAndPass = g_strndup((gchar*)decoded, decodedLen);
+        g_free(decoded);
+    }
+
+    gchar** tokens = g_strsplit(loginAndPass, ":", 2);
+    g_free(loginAndPass);
+
+    const gchar* login = NULL;
+    const gchar* pass = NULL;
+    for(unsigned i = 0; i < 2 && tokens[i] != NULL; ++i) {
+        switch(i) {
+            case 0:
+                login = tokens[i];
+                break;
+            case 1:
+                pass = tokens[i];
+                break;
+        }
+    }
+
+    if(authenticate(auth, login, pass)) {
+        ctx->token =
+            gst_rtsp_token_new(
+                GST_RTSP_TOKEN_MEDIA_FACTORY_ROLE, G_TYPE_STRING,
+                login, NULL);
+    }
+
+    g_strfreev(tokens);
+}
+#endif
 
 static gboolean
 authenticate(
@@ -278,6 +332,7 @@ authenticate(
     // FIXME! it looks like we shouldn't add ref to token. Look rtsp-auth.c:747
     gst_rtsp_token_unref(defaultToken);
 
+#if GST_CHECK_VERSION(1, 12, 0)
     GstRTSPAuthCredential**credentials =
         gst_rtsp_message_parse_auth_credentials(ctx->request,
         GST_RTSP_HDR_AUTHORIZATION);
@@ -297,6 +352,22 @@ authenticate(
     }
 
     gst_rtsp_auth_credentials_free(credentials);
+#else
+    gchar* authorization;
+    GstRTSPResult res =
+        gst_rtsp_message_get_header(
+            ctx->request, GST_RTSP_HDR_AUTHORIZATION,
+            &authorization, 0);
+    if(res < 0) {
+        ctx->token = defaultToken;
+        goto no_auth;
+    }
+
+    if(g_ascii_strncasecmp(authorization, "basic ", 6) == 0) {
+        basic_authenticate(self, authorization + 6, ctx);
+    } else if(g_ascii_strncasecmp(authorization, "digest ", 7) == 0) {
+    }
+#endif
 
     if(!ctx->token) {
         ctx->token = defaultToken;

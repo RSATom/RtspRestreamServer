@@ -10,6 +10,10 @@
 #include "RtspAuth.h"
 #include "RtspMountPoints.h"
 
+#if GST_CHECK_VERSION(1, 12, 0)
+#define ENABLE_LIMITS 1
+#endif
+
 
 namespace RestreamServerLib
 {
@@ -65,9 +69,12 @@ struct Server::Private
 
     void onClientConnected(GstRTSPClient*);
 
+#if ENABLE_LIMITS
     GstRTSPStatusCode beforePlay(const GstRTSPClient*, const GstRTSPUrl*, const gchar* sessionId);
-    void onPlay(const GstRTSPClient*, const GstRTSPContext*, const gchar* sessionId);
     GstRTSPStatusCode beforeRecord(const GstRTSPClient*, const GstRTSPUrl*, const gchar* sessionId);
+#endif
+
+    void onPlay(const GstRTSPClient*, const GstRTSPContext*, const gchar* sessionId);
     void onRecord(const GstRTSPClient*, const GstRTSPContext*, const gchar* sessionId);
     void onTeardown(const GstRTSPClient*, const GstRTSPUrl*, const gchar* sessionId);
 
@@ -200,6 +207,7 @@ void Server::Private::onClientConnected(GstRTSPClient* client)
         "New connection from {}",
         gst_rtsp_connection_get_ip(connection));
 
+#if ENABLE_LIMITS
     auto prePlayCallback =
         (GstRTSPStatusCode (*)(GstRTSPClient*, GstRTSPContext*, gpointer))
         [] (GstRTSPClient* client, GstRTSPContext* context, gpointer userData) {
@@ -210,6 +218,7 @@ void Server::Private::onClientConnected(GstRTSPClient* client)
             return p->beforePlay(client, context->uri, sessionId);
         };
     g_signal_connect(client, "pre-play-request", GCallback(prePlayCallback), this);
+#endif
 
     auto playCallback = (void (*)(GstRTSPClient*, GstRTSPContext*, gpointer))
         [] (GstRTSPClient* client, GstRTSPContext* context, gpointer userData) {
@@ -221,6 +230,7 @@ void Server::Private::onClientConnected(GstRTSPClient* client)
         };
     g_signal_connect(client, "play-request", GCallback(playCallback), this);
 
+#if ENABLE_LIMITS
     auto preRecordCallback =
         (GstRTSPStatusCode (*)(GstRTSPClient*, GstRTSPContext*, gpointer))
         [] (GstRTSPClient* client, GstRTSPContext* context, gpointer userData) {
@@ -231,6 +241,7 @@ void Server::Private::onClientConnected(GstRTSPClient* client)
             return p->beforeRecord(client, context->uri, sessionId);
         };
     g_signal_connect(client, "pre-record-request", GCallback(preRecordCallback), this);
+#endif
 
     auto recordCallback = (void (*)(GstRTSPClient*, GstRTSPContext*, gpointer))
         [] (GstRTSPClient* client, GstRTSPContext* context, gpointer userData) {
@@ -261,6 +272,7 @@ void Server::Private::onClientConnected(GstRTSPClient* client)
     g_signal_connect(client, "closed", GCallback(closedCallback), this);
 }
 
+#if ENABLE_LIMITS
 GstRTSPStatusCode Server::Private::beforePlay(
     const GstRTSPClient* client,
     const GstRTSPUrl* url,
@@ -286,6 +298,7 @@ GstRTSPStatusCode Server::Private::beforePlay(
 
     return GST_RTSP_STS_OK;
 }
+#endif
 
 void Server::Private::onPlay(
     const GstRTSPClient* client,
@@ -305,6 +318,7 @@ void Server::Private::onPlay(
         firstPlayerConnected(ctx, path);
 }
 
+#if ENABLE_LIMITS
 GstRTSPStatusCode Server::Private::beforeRecord(
     const GstRTSPClient* client,
     const GstRTSPUrl* url,
@@ -323,6 +337,7 @@ GstRTSPStatusCode Server::Private::beforeRecord(
     } else
        return GST_RTSP_STS_OK;
 }
+#endif
 
 void Server::Private::onRecord(
     const GstRTSPClient* client,

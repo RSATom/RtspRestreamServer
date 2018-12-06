@@ -95,6 +95,7 @@ constructed(GObject* object)
     GstPadPtr selectorTestCardPadPtr(gst_pad_get_peer(testCardParseSrcPad));
     self->selectorTestCardPad = selectorTestCardPadPtr.get(); // FIXME! should we keep ref?
 
+#if GST_CHECK_VERSION(1, 14, 0)
     gst_element_foreach_sink_pad(self->selector,
         [] (GstElement* /*element*/,
             GstPad* pad,
@@ -107,6 +108,20 @@ constructed(GObject* object)
             }
             return TRUE;
         }, self);
+#else
+    GstIterator* it = gst_element_iterate_sink_pads(self->selector);
+    GValue item = G_VALUE_INIT;
+    while(gst_iterator_next(it, &item) == GST_ITERATOR_OK) {
+        GstPad* pad = GST_PAD(g_value_get_object(&item));
+        if(pad != self->selectorTestCardPad) {
+            self->selectorSourcePad = pad;
+            break;
+        }
+        g_value_reset(&item);
+    }
+    g_value_unset(&item);
+    gst_iterator_free(it);
+#endif
 
     GstPadPtr sourcePadPtr(gst_pad_get_peer(self->selectorSourcePad));
     self->sourcePad = sourcePadPtr.get(); // FIXME! should we keep ref?
