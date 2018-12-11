@@ -424,10 +424,13 @@ void Server::Private::onClientClosed(const GstRTSPClient* client)
                 refClients.erase(client);
 
                 if(refClients.empty()) {
-                    // last client was reader
-                    if(nullptr == pathInfo.recordClient)
-                        lastPlayerDisconnected(path);
-                    else {
+                    if(nullptr == pathInfo.recordClient) {
+                        assert(pathInfo.playCount == 0 || pathInfo.playCount == 1);
+                        if(1 == pathInfo.playCount) {
+                            --pathInfo.playCount;
+                            lastPlayerDisconnected(path);
+                        }
+                    } else {
                         assert(pathInfo.recordClient == client);
 
                         pathInfo.recordClient = nullptr;
@@ -446,9 +449,13 @@ void Server::Private::onClientClosed(const GstRTSPClient* client)
                     }
 
                     if(++refClients.begin() == refClients.end()) {
-                        // if only writer remained
-                        if(nullptr != pathInfo.recordClient)
-                            lastPlayerDisconnected(path);
+                        if(nullptr != pathInfo.recordClient) {
+                            assert(pathInfo.playCount == 0 || pathInfo.playCount == 1);
+                            if(1 == pathInfo.playCount) {
+                                --pathInfo.playCount;
+                                lastPlayerDisconnected(path);
+                            }
+                        }
                     }
                 }
             } else {
