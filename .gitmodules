@@ -3,4 +3,4 @@
 	url = https://github.com/RSATom/gst-interpipe.git
 [submodule "deps/CxxPtr"]
 	path = deps/CxxPtr
-	url = git@github.com:RSATom/CxxPtr.git
+	url = https://github.com/RSATom/CxxPtr.git
