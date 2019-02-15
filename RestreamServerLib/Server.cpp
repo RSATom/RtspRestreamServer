@@ -1,6 +1,7 @@
 #include "Server.h"
 
 #include <set>
+#include <map>
 
 #include <CxxPtr/GstRtspServerPtr.h>
 
