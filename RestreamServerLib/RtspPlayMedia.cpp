@@ -46,7 +46,7 @@ rtsp_play_media_create_element(
            "rtspsrc name=src ! rtph264depay ! h264parse name=testCardParse ! selector. "
            "interpipesrc format=time listen-to={} ! selector. "
            "input-selector cache-buffers=true sync-mode=1 name=selector "
-           "selector. ! rtph264pay config-interval=-1 pt=96 name=pay0 ",
+           "selector. ! h264parse ! rtph264pay config-interval=-1 pt=96 name=pay0 ",
            listenTo);
 
     GError* error = nullptr;

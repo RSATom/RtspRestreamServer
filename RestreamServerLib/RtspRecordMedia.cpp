@@ -30,7 +30,7 @@ rtsp_record_media_create_element(
 
     const std::string pipeline =
         fmt::format(
-            "rtph264depay name=depay0 ! h264parse ! "
+            "rtph264depay name=depay0 ! h264parse config-interval=-1 ! "
             "interpipesink name={} sync=true allow-negotiation=false",
             proxyName);
 
