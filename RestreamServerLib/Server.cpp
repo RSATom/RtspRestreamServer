@@ -464,6 +464,13 @@ void Server::Private::onClientClosed(const GstRTSPClient* client)
                         }
                     }
                 }
+
+                Log()->debug(
+                    "Referencing clients count: {}, has recorder: {}, players count: {}",
+                    refClients.size(), !!pathInfo.recordClient, pathInfo.playCount);
+
+                if(refClients.size() != pathInfo.playCount + (pathInfo.recordClient ? 1 : 0))
+                    Log()->critical("Inconsitency in clients counting");
             } else {
                 Log()->critical("Inconsitency between clients and paths");
             }
