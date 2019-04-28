@@ -404,6 +404,13 @@ void Server::Private::onTeardown(
                 static_cast<const void*>(client), url->abspath);
         }
     }
+    pathInfo.refClients.erase(client);
+
+    const auto clientIt = clients.find(client);
+    if(clients.end() != clientIt) {
+        auto& refPaths = clientIt->second.refPaths;
+        refPaths.erase(path);
+    }
 }
 
 void Server::Private::onClientClosed(const GstRTSPClient* client)
@@ -447,15 +454,13 @@ void Server::Private::onClientClosed(const GstRTSPClient* client)
                         pathInfo.recordSessionId.clear();
 
                         recorderDisconnected(path);
-                    }
+                    } else {
+                        assert(pathInfo.playCount > 0);
+                        --pathInfo.playCount;
 
-                    if(++refClients.begin() == refClients.end()) {
-                        if(nullptr != pathInfo.recordClient) {
-                            assert(pathInfo.playCount == 0 || pathInfo.playCount == 1);
-                            if(1 == pathInfo.playCount) {
-                                --pathInfo.playCount;
-                                lastPlayerDisconnected(path);
-                            }
+                        if(0 == pathInfo.playCount) {
+                            assert(refClients.empty() || ++refClients.begin() == refClients.end());
+                            lastPlayerDisconnected(path);
                         }
                     }
                 }
