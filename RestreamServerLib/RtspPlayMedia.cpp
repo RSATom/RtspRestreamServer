@@ -194,7 +194,7 @@ checkSourceTimeout(
         const bool timeout =
             GST_CLOCK_DIFF(self->lastBufferTime, currentTime) > (2 * GST_SECOND);
 
-        Log()->debug("Buffer timeout: {}", timeout);
+        Log()->trace("Buffer timeout: {}", timeout);
 
         switchSelector(self, !timeout);
     }
