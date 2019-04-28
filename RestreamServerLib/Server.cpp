@@ -432,19 +432,19 @@ void Server::Private::onClientClosed(const GstRTSPClient* client)
                 refClients.erase(client);
 
                 if(refClients.empty()) {
-                    if(nullptr == pathInfo.recordClient) {
-                        assert(pathInfo.playCount == 0 || pathInfo.playCount == 1);
-                        if(1 == pathInfo.playCount) {
-                            --pathInfo.playCount;
-                            lastPlayerDisconnected(path);
-                        }
-                    } else {
-                        assert(pathInfo.recordClient == client);
+                    if(pathInfo.recordClient == client) {
+                        assert(pathInfo.playCount == 0);
 
                         pathInfo.recordClient = nullptr;
                         pathInfo.recordSessionId.clear();
 
                         recorderDisconnected(path);
+                    } else {
+                        assert(nullptr == pathInfo.recordClient && 1 == pathInfo.playCount);
+
+                        --pathInfo.playCount;
+
+                        lastPlayerDisconnected(path);
                     }
 
                     paths.erase(pathIt);
