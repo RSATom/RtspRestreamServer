@@ -9,7 +9,7 @@ To try use following commands:
 
 * `sudo apt update`
 * `sudo apt install build-essential git cmake libspdlog-dev libgstrtspserver-1.0-dev libgstreamer1.0-dev`
-* `git clone https://github.com/RSATom/RtspRestreamServer.git`
+* `git clone https://github.com/RSATom/RtspRestreamServer.git --recursive`
 * `cd RtspRestreamServer && mkdir build && cd build && cmake .. && make -j4 && cd ..`
 
 ## Run
