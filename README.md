@@ -15,6 +15,8 @@ To try use following commands:
 ## Run
 
 * `sudo apt install gstreamer1.0-rtsp gstreamer1.0-plugins-base gstreamer1.0-plugins-ugly gstreamer1.0-libav gstreamer1.0-x gstreamer1.0-tools gstreamer1.0-plugins-base-apps`
+* Server:
+`RtspRestreamServer/build/RestreamServerApp/RestreamServerApp`
 * Record side:
 `gst-launch-1.0 videotestsrc ! x264enc ! rtspclientsink location=rtsp://localhost:8001/test?record`
 * Play side:
