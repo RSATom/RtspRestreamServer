@@ -1,10 +1,6 @@
 # RtspRestreamServer
 RTSP restream server based on Gstreamer RTSP Server
 
-## Demo
-
-To try use following commands:
-
 ## Build
 
 * `sudo apt update`
