@@ -1,6 +1,0 @@
-[submodule "deps/gst-interpipe"]
-	path = deps/gst-interpipe
-	url = https://github.com/RSATom/gst-interpipe.git
-[submodule "deps/CxxPtr"]
-	path = deps/CxxPtr
-	url = https://github.com/RSATom/CxxPtr.git
